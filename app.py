@@ -8,21 +8,20 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS（ガタつき防止とデザイン調整） ---
+# --- JUOG専用デザインCSS ---
 st.markdown("""
     <style>
-    /* 1. 標準ヘッダーを非表示にして位置を固定 */
+    /* 1. 標準ヘッダーを非表示 */
     header[data-testid="stHeader"] { display: none !important; }
     
-    /* 2. 全体の余白と高さを固定（内容の増減でページが動くのを防ぐ） */
+    /* 2. 全体の横幅を1100pxに厳密に固定し、余白を調整 */
     .main .block-container { 
         padding-top: 40px !important; 
-        max-width: 1000px !important; 
+        max-width: 1100px !important; 
         margin: auto;
-        min-height: 120vh; /* 常に十分な高さを確保し、中身が短くても位置を固定 */
     }
     
-    /* 3. タイトルの位置を厳密に固定 */
+    /* 3. タイトルの位置を完全に固定してガタつきを防止 */
     h1 { 
         font-size: 26px !important; 
         color: #0F172A; 
@@ -39,7 +38,6 @@ st.markdown("""
         margin-top: 0px !important;
         margin-bottom: 30px !important;
         border: none !important;
-        box-shadow: none !important;
     }
     
     .juog-header {
@@ -55,7 +53,7 @@ st.markdown("""
     
     label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
 
-    /* 長い選択肢の折り返し */
+    /* セレクトボックスの選択肢を折り返し */
     div[data-baseweb="select"] ul { white-space: normal !important; }
     div[role="option"] { line-height: 1.4 !important; padding: 8px !important; }
 
@@ -98,7 +96,7 @@ HELP_EAUIAIC = """
 **術中合併症（EAUiaiC）詳細基準**
 - **Grade 0**: 逸脱なし、介入なし、患者への影響なし
 - **Grade 1**: 追加処置はあるが、生命に危険がなく後遺症を残さない
-- **Grade 2**: 主要な追加処置が必要。後遺症の可能性あり
+- **Grade 2**: 主要な追加処置が必要。短期的・長期的な後遺症を残す可能性あり
 - **Grade 3**: 生命を脅かす事態だが、臓器摘出までは要さない
 - **Grade 4**: 重大な結果をもたらす事態 (4A: 臓器摘出, 4B: 手術完遂不能)
 - **Grade 5**: 致命的な事象 (5A: 部位・患者間違い, 5B: 術中死亡)
@@ -149,10 +147,9 @@ def send_email(report_content, pid, facility):
         return True
     except: return False
 
-# タイトル（位置完全固定）
 st.title("JUOG UTUC_Conlidative 周術期CRF")
 
-# --- 共通ヘッダー（白背景・枠線なし・位置固定） ---
+# --- 共通ヘッダー（透明・位置固定） ---
 st.markdown('<div class="top-info-bar">', unsafe_allow_html=True)
 col_h1, col_h2 = st.columns(2)
 with col_h1:
@@ -162,7 +159,6 @@ with col_h2:
     st.session_state.patient_id = st.text_input("研究対象者識別コード*", value=st.session_state.patient_id, placeholder="例: KMU-001")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# コンテンツエリア
 tab1, tab2, tab3, tab4 = st.tabs(["📊 術前・登録時", "🔪 手術記録", "🔬 病理結果", "📋 30日目評価"])
 
 with tab1:
@@ -215,8 +211,6 @@ with tab2:
             st.session_state.op_admission_date = st.date_input("入院日*", value=None)
             st.session_state.op_date = st.date_input("手術実施日*", value=None)
             st.session_state.op_discharge_date = st.date_input("退院日", value=None)
-            if st.session_state.op_date and last_evp_date and st.session_state.op_date <= last_evp_date:
-                st.error("手術日は最終EVP投与日より後の日付を入力してください。")
             st.session_state.op_type = st.selectbox("術式*", ["選択してください", "根治的腎尿管全摘除術", "尿管部分切除術"], index=0)
             st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=None, horizontal=True)
             st.session_state.op_completed = st.radio("予定手術が完遂できたか*", ["はい", "いいえ"], index=None, horizontal=True)
@@ -286,7 +280,8 @@ with tab4:
     if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
         if not st.session_state.patient_id or st.session_state.facility_name == "選択してください":
             st.error("施設名と識別コードを入力してください")
-        elif st.session_state.status_alive is None: st.error("生存状況を選択してください")
+        elif st.session_state.status_alive is None:
+            st.error("生存状況を選択してください")
         else:
             rep = f"施設: {st.session_state.facility_name}\nID: {st.session_state.patient_id}\n生存: {st.session_state.status_alive}\nCD: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}"
             if send_email(rep, st.session_state.patient_id, st.session_state.facility_name): st.success("送信完了しました！"); st.balloons()
