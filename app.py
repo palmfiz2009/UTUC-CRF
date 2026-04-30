@@ -11,30 +11,35 @@ st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 # --- JUOG専用デザインCSS（ガタつき防止とデザイン調整） ---
 st.markdown("""
     <style>
-    /* ページ全体の余白を固定 */
-    .main { background-color: #FFFFFF; }
-    .block-container { 
-        padding-top: 2rem !important; 
+    /* 1. 標準ヘッダーを非表示にして位置を固定 */
+    header[data-testid="stHeader"] { display: none !important; }
+    
+    /* 2. 全体の余白と高さを固定（内容の増減でページが動くのを防ぐ） */
+    .main .block-container { 
+        padding-top: 40px !important; 
         max-width: 1000px !important; 
-        margin: auto; 
+        margin: auto;
+        min-height: 120vh; /* 常に十分な高さを確保し、中身が短くても位置を固定 */
     }
     
-    /* タイトルの位置を固定してガタつきを防止 */
+    /* 3. タイトルの位置を厳密に固定 */
     h1 { 
         font-size: 26px !important; 
         color: #0F172A; 
         text-align: center; 
         margin-top: 0px !important;
-        margin-bottom: 30px !important; 
+        margin-bottom: 35px !important; 
         font-weight: 800; 
     }
 
-    /* 施設名とIDのエリア（指示により灰色背景と枠線を削除） */
+    /* 4. 施設名・IDエリア（灰色バーや枠線を徹底除去） */
     .top-info-bar {
         background-color: transparent !important;
         padding: 0px !important;
-        margin-bottom: 20px !important;
+        margin-top: 0px !important;
+        margin-bottom: 30px !important;
         border: none !important;
+        box-shadow: none !important;
     }
     
     .juog-header {
@@ -50,14 +55,23 @@ st.markdown("""
     
     label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
 
-    /* 長い選択肢を折り返して表示 */
+    /* 長い選択肢の折り返し */
     div[data-baseweb="select"] ul { white-space: normal !important; }
-    div[role="option"] { line-height: 1.4 !important; padding-top: 8px !important; padding-bottom: 8px !important; }
+    div[role="option"] { line-height: 1.4 !important; padding: 8px !important; }
 
     /* スタイリッシュなタブ（下線方式） */
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #E2E8F0; }
-    .stTabs [data-baseweb="tab"] { background-color: transparent !important; border: none !important; color: #64748B !important; padding: 10px 4px !important; font-weight: 600 !important; }
-    .stTabs [aria-selected="true"] { color: #1E3A8A !important; border-bottom: 3px solid #1E3A8A !important; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important;
+        border: none !important;
+        color: #64748B !important;
+        padding: 10px 4px !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #1E3A8A !important;
+        border-bottom: 3px solid #1E3A8A !important;
+    }
     
     /* 入力枠の標準化 */
     .stSelectbox div[data-baseweb="select"], .stNumberInput input, .stTextInput input, .stTextArea textarea {
@@ -67,7 +81,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 施設リスト (40施設) ---
+# --- 施設リスト ---
 FACILITY_LIST = [
     "選択してください", "関西医科大学", "愛知県がんセンター", "秋田大学", "愛媛大学", "大分大学", "岡山大学", 
     "大阪公立大学", "大阪大学", "大阪府済生会野江病院", "香川大学", "鹿児島大学", "岐阜大学", 
@@ -84,7 +98,7 @@ HELP_EAUIAIC = """
 **術中合併症（EAUiaiC）詳細基準**
 - **Grade 0**: 逸脱なし、介入なし、患者への影響なし
 - **Grade 1**: 追加処置はあるが、生命に危険がなく後遺症を残さない
-- **Grade 2**: 主要な追加処置が必要。短期的・長期的な後遺症を残す可能性あり
+- **Grade 2**: 主要な追加処置が必要。後遺症の可能性あり
 - **Grade 3**: 生命を脅かす事態だが、臓器摘出までは要さない
 - **Grade 4**: 重大な結果をもたらす事態 (4A: 臓器摘出, 4B: 手術完遂不能)
 - **Grade 5**: 致命的な事象 (5A: 部位・患者間違い, 5B: 術中死亡)
@@ -135,10 +149,10 @@ def send_email(report_content, pid, facility):
         return True
     except: return False
 
-# タイトル（位置固定済み）
+# タイトル（位置完全固定）
 st.title("JUOG UTUC_Conlidative 周術期CRF")
 
-# --- 共通ヘッダー（指示により灰色バーを削除し背景を透明化） ---
+# --- 共通ヘッダー（白背景・枠線なし・位置固定） ---
 st.markdown('<div class="top-info-bar">', unsafe_allow_html=True)
 col_h1, col_h2 = st.columns(2)
 with col_h1:
@@ -263,10 +277,8 @@ with tab4:
             "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", "その他（放射線療法、治験参加、転移巣切除など）"
         ], index=(["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", "ニボルマブ単剤療法（術後補助療法として）", 
             "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", "その他（放射線療法、治験参加、転移巣切除など）"].index(st.session_state.adj_plan)))
-        
         if st.session_state.adj_plan == "その他（放射線療法、治験参加、転移巣切除など）":
             st.session_state.adj_other_detail = st.text_area("治療内容の詳細*", height=200)
-        
         adj_date = st.date_input("次回治療開始予定日または実施日*", value=None)
         st.session_state.status_alive = st.radio("生存状況（術後30日時点）*", ["生存", "死亡"], index=None, horizontal=True)
 
@@ -274,9 +286,8 @@ with tab4:
     if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
         if not st.session_state.patient_id or st.session_state.facility_name == "選択してください":
             st.error("施設名と識別コードを入力してください")
-        elif st.session_state.status_alive is None:
-            st.error("生存状況を選択してください")
+        elif st.session_state.status_alive is None: st.error("生存状況を選択してください")
         else:
-            rep = f"施設: {st.session_state.facility_name}\nID: {st.session_state.patient_id}\nCD: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}"
+            rep = f"施設: {st.session_state.facility_name}\nID: {st.session_state.patient_id}\n生存: {st.session_state.status_alive}\nCD: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}"
             if send_email(rep, st.session_state.patient_id, st.session_state.facility_name): st.success("送信完了しました！"); st.balloons()
             else: st.error("送信失敗しました。")
