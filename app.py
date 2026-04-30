@@ -63,7 +63,7 @@ if 'init_done' not in st.session_state:
     defaults = {
         "vital_detail": "N/A", "bladder_tumor_tx": "N/A", "op_date": None, "op_type": "未選択",
         "approach": "未選択", "op_completed": "未選択", "op_incomplete_detail": "N/A",
-        "op_time": 0, "bleeding": 0, "eau_grade": "未選択", "ln_dissection": "未選択",
+        "op_time": 0, "bleeding": 0, "eau_grade": "未選択", "eau_detail": "N/A", "ln_dissection": "未選択",
         "ln_range": [], "p_histology": "未選択", "p_histology_other": "N/A",
         "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
         "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
@@ -97,7 +97,6 @@ with tab1:
     with c1:
         last_evp_date = st.date_input("最終EVP投与日", value=None)
         pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
-        # 指示：最新のPDFリンクへ変更
         st.caption("[JCOG版 CTCAE v6.0 日本語訳（外部リンク）](https://jcog.jp/assets/CTCAEv6J_20260301_v28_0.pdf)")
         
         if pre_ae_grade not in ["選択してください", "なし"]:
@@ -119,10 +118,9 @@ with tab1:
         wbc = st.number_input("WBC (/μL)*", value=0, step=1, min_value=0, max_value=100000)
         hb = st.number_input("Hb (g/dL)*", value=0.0, step=0.1, min_value=0.0, max_value=25.0)
         plt = st.number_input("PLT (x10^4/μL)*", value=0, step=1, min_value=0, max_value=200)
-        t_bil = st.number_input("T-Bil (mg/dL)*", value=0.0, step=0.1, min_value=0.0, max_value=50.0)
         ast = st.number_input("AST (U/L)*", value=0, step=1, min_value=0, max_value=5000)
-    with bc2:
         alt = st.number_input("ALT (U/L)*", value=0, step=1, min_value=0, max_value=5000)
+    with bc2:
         ldh = st.number_input("LDH (U/L)*", value=0, step=1, min_value=0, max_value=10000)
         alb = st.number_input("Alb (g/dL)*", value=0.0, step=0.1, min_value=0.0, max_value=10.0)
         cre = st.number_input("Cre (mg/dL)*", value=0.00, step=0.01, min_value=0.0, max_value=20.0)
@@ -157,6 +155,12 @@ with tab2:
             st.session_state.bleeding = st.number_input("出血量 (mL)*", value=0, step=1, max_value=20000)
         with oc2:
             st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0, help=HELP_EAUIAIC)
+            
+            if st.session_state.eau_grade not in ["選択してください", "Grade 0"]:
+                st.session_state.eau_detail = st.text_area("術中合併症の詳細内容*")
+            else:
+                st.session_state.eau_detail = "なし"
+
             st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=None, horizontal=True)
             if st.session_state.ln_dissection == "実施した":
                 st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
@@ -219,6 +223,6 @@ with tab4:
         elif op_performed == "実施した" and st.session_state.op_date and last_evp_date and st.session_state.op_date <= last_evp_date:
             st.error("手術日のエラーを修正してください")
         else:
-            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\n最終EVP: {last_evp_date}\nCre: {cre}\neGFR: {egfr}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}"
+            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\n最終EVP: {last_evp_date}\nCre: {cre}\neGFR: {egfr}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}\nEAUiaiC詳細: {st.session_state.eau_detail}"
             if send_email(rep, patient_id): st.success("送信完了しました！"); st.balloons()
             else: st.error("送信失敗しました。")
