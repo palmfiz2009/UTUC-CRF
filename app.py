@@ -169,25 +169,25 @@ with tab1:
     st.markdown('<div class="juog-header">2. 術前血液検査（一か月以内）</div>', unsafe_allow_html=True)
     bc1, bc2 = st.columns(2)
     with bc1:
-        wbc = st.number_input("WBC (/μL)*", value=0, step=1)
-        hb = st.number_input("Hb (g/dL)*", value=0.0, step=0.1)
-        plt = st.number_input("PLT (x10^4/μL)*", value=0, step=1)
-        ast = st.number_input("AST (U/L)*", value=0, step=1)
-        alt = st.number_input("ALT (U/L)*", value=0, step=1)
+        wbc = st.number_input("WBC (/μL)*", value=None, step=1)
+        hb = st.number_input("Hb (g/dL)*", value=None, step=0.1)
+        plt = st.number_input("PLT (x10^4/μL)*", value=None, step=1)
+        ast = st.number_input("AST (U/L)*", value=None, step=1)
+        alt = st.number_input("ALT (U/L)*", value=None, step=1)
     with bc2:
-        ldh = st.number_input("LDH (U/L)*", value=0, step=1)
-        alb = st.number_input("Alb (g/dL)*", value=0.0, step=0.1)
-        cre = st.number_input("Cre (mg/dL)*", value=0.00, step=0.01)
-        egfr = st.number_input("eGFR (mL/min/1.73m²)*", value=0.0, step=0.1)
-        crp = st.number_input("CRP (mg/dL)*", value=0.00, step=0.01)
+        ldh = st.number_input("LDH (U/L)*", value=None, step=1)
+        alb = st.number_input("Alb (g/dL)*", value=None, step=0.1)
+        cre = st.number_input("Cre (mg/dL)*", value=None, step=0.01)
+        egfr = st.number_input("eGFR (mL/min/1.73m²)*", value=None, step=0.1)
+        crp = st.number_input("CRP (mg/dL)*", value=None, step=0.01)
 
     st.subheader("白血球分画 (%)")
     f1, f2, f3, f4, f5 = st.columns(5)
-    neutro = f1.number_input("Neutro*", value=0.0, step=0.1)
-    lympho = f2.number_input("Lympho*", value=0.0, step=0.1)
-    mono = f3.number_input("Mono*", value=0.0, step=0.1)
-    eosino = f4.number_input("Eosino*", value=0.0, step=0.1)
-    baso = f5.number_input("Baso*", value=0.0, step=0.1)
+    neutro = f1.number_input("Neutro*", value=None, step=0.1)
+    lympho = f2.number_input("Lympho*", value=None, step=0.1)
+    mono = f3.number_input("Mono*", value=None, step=0.1)
+    eosino = f4.number_input("Eosino*", value=None, step=0.1)
+    baso = f5.number_input("Baso*", value=None, step=0.1)
 
 with tab2:
     st.markdown('<div class="juog-header">4. 手術実施状況</div>', unsafe_allow_html=True)
@@ -202,8 +202,8 @@ with tab2:
             st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=None, horizontal=True)
             st.session_state.op_completed = st.radio("予定手術が完遂できたか*", ["はい", "いいえ"], index=None, horizontal=True)
             if st.session_state.op_completed == "いいえ": st.session_state.op_incomplete_detail = st.text_area("完遂できなかった理由*")
-            st.session_state.op_time = st.number_input("手術時間 (分)*", value=0, step=1)
-            st.session_state.bleeding = st.number_input("出血量 (mL)*", value=0, step=1)
+            st.session_state.op_time = st.number_input("手術時間 (分)*", value=None, step=1)
+            st.session_state.bleeding = st.number_input("出血量 (mL)*", value=None, step=1)
         with oc2:
             st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0, help=HELP_EAUIAIC)
             if st.session_state.eau_grade not in ["選択してください", "Grade 0"]: st.session_state.eau_detail = st.text_area("術中合併症詳細*")
@@ -211,7 +211,6 @@ with tab2:
             if st.session_state.ln_dissection == "実施した":
                 st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
     elif st.session_state.op_performed == "実施しなかった":
-        # 修正：文言変更および「その他」の入力枠追加
         no_op_opts = ["選択してください", "病勢進行", "G3以上のEVP関連有害事象の発生", "同意撤回", "その他"]
         idx_noop = no_op_opts.index(st.session_state.no_op_reason) if st.session_state.no_op_reason in no_op_opts else 0
         st.session_state.no_op_reason = st.selectbox("実施しなかった理由*", no_op_opts, index=idx_noop)
@@ -231,7 +230,7 @@ with tab3:
             if p_sub_presence == "あり": st.session_state.p_subtype_type = st.multiselect("亜型の種類*", ["Nest型", "Micropapillary型", "Plasmacytoid型", "Sarcomatoid変化", "Lymphoepithelioma-like型", "Clear cell型", "Lipid-rich型", "Trophoblastic分化", "Glandular分化", "Squamous分化"])
             st.session_state.p_morphology = st.selectbox("形態*", ["選択してください", "乳頭状", "非乳頭状", "結節状", "浸潤状", "平坦状", "評価不能", "その他"], index=0)
             p_checks.append(st.session_state.p_morphology)
-            st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=0.0, step=0.1)
+            st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=None, step=0.1)
             st.session_state.p_location = st.multiselect("部位*", ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
         with pc2:
             st.session_state.ypt = st.selectbox("ypT分類*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4", "評価不能"], index=0)
@@ -265,21 +264,9 @@ with tab4:
         else: st.session_state.cd_grade = "N/A"
     with sc2:
         if st.session_state.op_performed == "実施した":
-            adj_options = [
-                "選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", 
-                "ニボルマブ単剤療法（術後補助療法として）", 
-                "GC療法（術後補助化学療法として）", 
-                "GCarbo療法（術後補助化学療法として）",
-                "その他（放射線療法、治験参加、転移巣切除など）"
-            ]
+            adj_options = ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", "ニボルマブ単剤療法（術後補助療法として）", "GC療法（術後補助化学療法として）", "GCarbo療法（術後補助化学療法として）", "その他（放射線療法、治験参加、転移巣切除など）"]
         else:
-            adj_options = [
-                "選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", 
-                "ニボルマブ単剤療法", 
-                "GC療法", 
-                "GCarbo療法",
-                "その他（放射線療法、治験参加、転移巣切除など）"
-            ]
+            adj_options = ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", "ニボルマブ単剤療法", "GC療法", "GCarbo療法", "その他（放射線療法、治験参加、転移巣切除など）"]
         
         idx_adj = adj_options.index(st.session_state.adj_plan) if st.session_state.adj_plan in adj_options else 0
         st.session_state.adj_plan = st.selectbox("今後の治療予定（または実施中）*", adj_options, index=idx_adj)
@@ -292,7 +279,7 @@ with tab4:
     st.divider()
 
     # --- 送信・バリデーションロジック ---
-    def f_num(val): return str(val) if val != 0 and val != 0.0 else "【未入力・要確認】"
+    def f_num(val): return str(val) if (val is not None and val != 0 and val != 0.0) else "【未入力・要確認】"
 
     if not st.session_state.needs_confirm:
         if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
@@ -317,8 +304,8 @@ with tab4:
                 s_errors = []
                 blood_items = {"WBC":wbc, "Hb":hb, "PLT":plt, "AST":ast, "ALT":alt, "LDH":ldh, "Alb":alb, "Cre":cre, "eGFR":egfr}
                 for k, v in blood_items.items(): 
-                    if v == 0 or v == 0.0: s_errors.append(k)
-                if neutro == 0 and lympho == 0: s_errors.append("白血球分画")
+                    if v == 0 or v == 0.0 or v is None: s_errors.append(k)
+                if (neutro == 0 or neutro is None) and (lympho == 0 or lympho is None): s_errors.append("白血球分画")
                 if st.session_state.adj_plan == "選択してください": s_errors.append("今後の治療予定")
 
                 if s_errors:
@@ -339,7 +326,7 @@ with tab4:
             st.rerun()
 
     if st.session_state.do_send:
-        # レポート構成（全項目網羅・復元）
+        # レポート構成
         rep = f"""
 【基本情報】
 施設: {st.session_state.facility_name} / ID: {st.session_state.patient_id}
