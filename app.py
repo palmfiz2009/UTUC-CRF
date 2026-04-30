@@ -8,13 +8,13 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS（レイアウトと固定化） ---
+# --- JUOG専用デザインCSS（レイアウト固定とガタつき防止） ---
 st.markdown("""
     <style>
-    /* 1. 標準ヘッダーを非表示 */
+    /* 標準ヘッダーを非表示 */
     header[data-testid="stHeader"] { visibility: hidden; }
     
-    /* 2. 横幅を1100pxに厳密に固定 */
+    /* 横幅を1100pxに厳密に固定 */
     .block-container { 
         max-width: 1100px !important; 
         padding-top: 1.5rem !important; 
@@ -22,7 +22,7 @@ st.markdown("""
         margin: auto !important;
     }
     
-    /* 3. タイトル位置を固定してガタつきを防止 */
+    /* タイトル位置を完全に固定 */
     h1 { 
         font-size: 26px !important; 
         color: #0F172A; 
@@ -32,7 +32,7 @@ st.markdown("""
         font-weight: 800; 
     }
 
-    /* 4. 施設名・IDエリア（灰色バーや背景を完全除去） */
+    /* 施設名・IDエリア（透明・位置固定） */
     .top-info-bar {
         background-color: transparent !important;
         padding: 0px !important;
@@ -91,29 +91,39 @@ FACILITY_LIST = [
     "横浜市立大学", "琉球大学", "和歌山県立医科大学", "その他"
 ]
 
-# --- ヘルプテキスト定義 ---
+# --- ヘルプテキスト定義（詳細全文を復元） ---
 HELP_EAUIAIC = """
-**術中合併症（EAUiaiC）詳細基準**
-- **Grade 0**: 逸脱なし、介入なし、患者への影響なし
-- **Grade 1**: 追加処置はあるが、生命に危険がなく後遺症を残さない
-- **Grade 2**: 主要な追加処置が必要。短期的・長期的な後遺症を残す可能性あり
-- **Grade 3**: 生命を脅かす事態だが、臓器摘出までは要さない
-- **Grade 4**: 重大な結果をもたらす事態 (4A: 臓器摘出, 4B: 手術完遂不能)
-- **Grade 5**: 致命的な事象 (5A: 部位・患者間違い, 5B: 術中死亡)
+**術中合併症（EAUiaiC）詳細定義**
+- **Grade 0**： 介入や手術アプローチの変更を要さず、予定された手術手順からの逸脱がないもの。患者への影響がないもの。
+- **Grade 1**： 予定された手術手順において追加・代替処置を要するが、生命を脅かさず、臓器の一部または全摘出を伴わないもの。事象は制御下に置かれ、長期的な副作用、後遺症を残さない。（例：副損傷のない小血管からの出血に対する追加のクリッピング・凝固、術野展開のための予定外の授動など）
+- **Grade 2**： 手術アプローチにおいて主要な追加・代替処置を要するが、直ちに生命を脅かすものではないもの。事象は制御下に置かれるが、短期または長期的な副作用（後遺症）を残す可能性がある。
+- **Grade 3**： 予定された手術手順に加え主要な追加・代替処置を要し、かつ事象が直ちに生命を脅かすものであるが、臓器の一部または全摘出は要さないもの。短期または長期的な副作用、後遺症を残す可能性がある。
+- **Grade 4**： 予定された手術手順に加え主要な追加・代替処置を要し、直ちに生命を脅かす事態となり、患者に短期または長期的な重大な結果（後遺症）をもたらすもの。
+    - **4A**: 臓器の一部または全摘出を要するもの。
+    - **4B**: 技術的問題や外科的事象により予定された手術を完了できない、および／または、予定外のストーマ造設（ストーマや大きな皮膚弁など、身体イメージの変化）を要するもの。
+- **Grade 5**：
+    - **5A**: 切除手術または臓器摘出における部位・側の間違い、あるいは患者間違いまたは同意のない手術。
+    - **5B**: 術中死亡。
 """
 
 HELP_TRG = """
-**病理学的治療効果（TRG分類）判定基準**
-- **TRG 1 (Complete Response)**: 生存がん細胞なし。腫瘍床が広範な線維化に置換。
-- **TRG 2 (Strong Response)**: 生存がん細胞が腫瘍床全体の50%未満。
-- **TRG 3 (Weak/No Response)**: 生存がん細胞が優位（50%以上）、または変化なし。
+**TRG (Tumor Regression Grade) 分類**
+Voskuilen らの提唱する分類（線維化と残存生存腫瘍細胞の割合）。
+- **TRG 1：Complete Response**: 生存がん細胞を認めない。腫瘍床は広範な線維化に置換。
+- **TRG 2：Strong Response**: 線維化が優位。生存がん細胞が腫瘍床全体の50%未満。
+- **TRG 3：Weak and No Response**: 生存がん細胞が優位（50%以上）、または変性・壊死性変化が認められない。
 """
 
 HELP_CD = """
-- **Grade I**: 薬剤（解熱剤等）、手術、介入不要
-- **Grade II**: 輸血、中心静脈栄養、Grade I以外の薬物療法が必要
-- **Grade III**: 外科・内視鏡治療、IVRが必要（IIIa: 局麻、IIIb: 全麻）
-- **Grade IV**: ICU管理（IVa: 単一臓器不全、IVb: 多臓器不全）
+**Clavien-Dindo 分類 (術後30日以内)**
+- **Grade I**: 薬物、外科、内視鏡、IVR治療を要さない。解熱鎮痛剤、利尿剤、電解質補充、理学療法、創感染の開放はGrade Iとする。
+- **Grade II**: 上記以外の薬物療法、輸血、中心静脈栄養を要する。
+- **Grade III**: 外科、内視鏡、IVR治療を要する。
+    - **Grade IIIa**: 全身麻酔を要さない
+    - **Grade IIIb**: 全身麻酔下
+- **Grade IV**: ICU管理を要する生命を脅かす合併症。
+    - **Grade IVa**: 単一臓器不全
+    - **Grade IVb**: 多臓器不全
 - **Grade V**: 患者の死亡
 """
 
@@ -211,6 +221,8 @@ with tab2:
             st.session_state.op_admission_date = st.date_input("入院日*", value=None)
             st.session_state.op_date = st.date_input("手術実施日*", value=None)
             st.session_state.op_discharge_date = st.date_input("退院日", value=None)
+            if st.session_state.op_date and last_evp_date and st.session_state.op_date <= last_evp_date:
+                st.error("手術日は最終EVP投与日より後の日付を入力してください。")
             st.session_state.op_type = st.selectbox("術式*", ["選択してください", "根治的腎尿管全摘除術", "尿管部分切除術"], index=0)
             st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=None, horizontal=True)
             st.session_state.op_completed = st.radio("予定手術が完遂できたか*", ["はい", "いいえ"], index=None, horizontal=True)
