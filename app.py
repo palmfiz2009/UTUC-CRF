@@ -8,13 +8,13 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS ---
+# --- JUOG専用デザインCSS (スタイリッシュなタブへ変更) ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; }
     .block-container { padding-top: 2rem !important; max-width: 1000px !important; margin: auto; }
     
-    /* 登録用CRF風ヘッダーバー */
+    /* セクションヘッダー */
     .juog-header {
         background-color: #1E3A8A;
         color: white;
@@ -29,18 +29,56 @@ st.markdown("""
     h1 { font-size: 26px !important; color: #0F172A; text-align: center; margin-bottom: 30px !important; font-weight: 800; }
     label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
     
-    /* 余計な背景や枠を排除し、標準的な表示に統一 */
-    .stSelectbox div[data-baseweb="select"], .stNumberInput input, .stTextInput input, .stTextArea textarea {
+    /* スタイリッシュなタブデザイン（青背景を廃止し、下線方式へ） */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        border-bottom: 1px solid #E2E8F0;
+    }
+    .stTabs [data-baseweb="tab"] {
         background-color: transparent !important;
-        border-radius: 4px !important;
+        border: none !important;
+        color: #64748B !important;
+        padding: 10px 4px !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #1E3A8A !important;
+        border-bottom: 3px solid #1E3A8A !important;
     }
 
-    /* タブのデザイン */
-    .stTabs [aria-selected="true"] { background-color: #1E3A8A !important; color: white !important; }
+    /* 入力項目の標準化 */
+    .stSelectbox div[data-baseweb="select"], .stNumberInput input, .stTextInput input, .stTextArea textarea {
+        background-color: transparent !important;
+        border: 1px solid #E2E8F0 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 変数初期化 (NameError防止) ---
+# --- ヘルプテキスト定義（箇条書き化） ---[cite: 3, 4]
+HELP_EAUIAIC = """
+- **Grade 0**: 逸脱なし。
+- **Grade 1**: 追加処置あり。後遺症なし。（止血処置など）
+- **Grade 2**: 主要な追加処置あり。後遺症の可能性あり。
+- **Grade 3**: 生命を脅かす事態だが臓器摘出不要。
+- **Grade 4**: 臓器の一部または全摘出(4A)、または完遂不能(4B)。
+- **Grade 5**: 部位・患者間違い(5A)、または術中死亡(5B)。
+"""
+
+HELP_TRG = """
+- **TRG 1**: 生存がん細胞を認めない。
+- **TRG 2**: 線維化優位。生存がん細胞が50%未満。
+- **TRG 3**: 生存がん細胞が50%以上、または変化なし。
+"""
+
+HELP_CD = """
+- **Grade I**: 薬剤、手術、介入不要（解熱剤、利尿剤などは含む）。
+- **Grade II**: 輸血、中心静脈栄養、特定の薬物療法が必要。
+- **Grade III**: 外科、内視鏡、IVR治療が必要（IIIa: 全麻なし、IIIb: 全麻下）。
+- **Grade IV**: ICU管理を要する生命を脅かす合併症。
+- **Grade V**: 患者の死亡。
+"""
+
+# --- 変数初期化 ---
 if 'init_done' not in st.session_state:
     st.session_state['init_done'] = True
     defaults = {
@@ -48,47 +86,27 @@ if 'init_done' not in st.session_state:
         "approach": "未選択", "op_completed": "未選択", "op_incomplete_detail": "N/A",
         "op_time": 0, "bleeding": 0, "eau_grade": "未選択", "ln_dissection": "未選択",
         "ln_range": [], "p_histology": "未選択", "p_histology_other": "N/A",
-        "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "",
-        "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択",
+        "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
+        "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
         "p_multiplicity": "未選択", "p_lvi": "未選択", "r0_status": "未選択",
         "trg_grade": "未選択", "no_op_reason": "未選択", "cd_grade": "未選択", "cd_detail": ""
     }
     for k, v in defaults.items():
         if k not in st.session_state: st.session_state[k] = v
 
-# --- ヘルプテキスト定義 ---
-HELP_EAUIAIC = """Grade 0： 介入や手術アプローチの変更を要さず、予定された手術手順からの逸脱がないもの。
-Grade 1： 追加・代替処置を要するが生命を脅かさず後遺症を残さない。
-Grade 2： 主要な追加処置を要するが直ちに生命を脅かさない。後遺症の可能性あり。
-Grade 3： 主要な追加処置を要し直ちに生命を脅かすが臓器摘出不要。
-Grade 4A： 臓器の一部または全摘出。
-Grade 4B： 完遂不能または予定外ストーマ造設。
-Grade 5A： 部位・側・患者間違い。
-Grade 5B： 術中死亡。"""
-
-HELP_TRG = """TRG 1： 生存がん細胞を認めない。腫瘍床は広範な線維化に置換。
-TRG 2： 線維化が優位。生存がん細胞が腫瘍床全体の50%未満。
-TRG 3： 生存がん細胞が優位（50%以上）、または治療による変性・壊死性変化が認められない。"""
-
-HELP_CD = """Grade I: 薬物、外科、内視鏡、IVR治療を要さない（解熱剤、利尿剤などはGrade I）。
-Grade II: 上記以外の薬物療法、輸血、中心静脈栄養を要する。
-Grade III: 外科、内視鏡、IVR治療を要する（IIIa: 全麻なし、IIIb: 全麻下）。
-Grade IV: IC/ICU管理を要する生命を脅かす合併症。
-Grade V: 患者の死亡"""
-
 def send_email(report_content, pid):
     try:
         mail_user = st.secrets["email"]["user"]; mail_pass = st.secrets["email"]["pass"]
         to_addrs = ["urosec@kmu.ac.jp", "yoshida.tks@kmu.ac.jp"]
         msg = MIMEMultipart(); msg['From'] = mail_user; msg['To'] = ", ".join(to_addrs)
-        msg['Subject'] = f"【JUOG CRF】術後30日報告（ID: {pid}）"
+        msg['Subject'] = f"【JUOG CRF】周術期報告（ID: {pid}）"
         msg.attach(MIMEText(report_content, 'plain'))
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(mail_user, mail_pass); server.send_message(msg); server.quit()
         return True
     except: return False
 
-st.title("JUOG UTUC_Conlidative 登録用CRF")
+st.title("JUOG UTUC_Conlidative 周術期CRF")
 
 patient_id = st.text_input("研究対象者識別コード*")
 
@@ -100,6 +118,7 @@ with tab1:
     with c1:
         last_evp_date = st.date_input("最終EVP投与日", value=None)
         pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
+        st.caption("[CTCAE v6.0 公式リファレンス（外部リンク）](https://ctep.cancer.gov/protocoldevelopment/electronic_applications/ctc.htm#ctc_60)")
         ae_detail = st.text_input("CTCAE（詳細記載）")
     with c2:
         vital_abnormality = st.radio("術前身体所見およびバイタルサインの異常*", ["異常なし", "異常あり"], index=None, horizontal=True)
@@ -152,7 +171,7 @@ with tab2:
             st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0, help=HELP_EAUIAIC)
             st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=None, horizontal=True)
             if st.session_state.ln_dissection == "実施した":
-                st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
+                st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
     elif op_performed == "実施しなかった":
         st.session_state.no_op_reason = st.selectbox("実施しなかった理由*", ["選択してください", "病勢進行", "有害事象の発生", "同意撤回", "その他"], index=0)
 
@@ -167,12 +186,20 @@ with tab3:
             p_sub_presence = st.radio("亜型の有無*", ["なし", "あり"], index=None, horizontal=True)
             if p_sub_presence == "あり":
                 st.session_state.p_subtype_type = st.multiselect("亜型の種類*", ["Nest型", "Micropapillary型", "Plasmacytoid型", "Sarcomatoid変化", "Lymphoepithelioma-like型", "Clear cell型", "Lipid-rich型", "Trophoblastic分化", "Glandular分化", "Squamous分化"])
-            st.session_state.p_morphology = st.text_input("形態")
+            
+            # 腫瘍形態の選択肢化
+            st.session_state.p_morphology = st.selectbox("形態*", ["選択してください", "乳頭状(Papillary)", "非乳頭状(Non-papillary)", "結節状(Nodular)", "浸潤状(Infiltrative)", "平坦状(Flat)", "その他"], index=0)
+            
             st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=0.0, step=0.1)
             st.session_state.p_location = st.multiselect("場所*", ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
         with pc2:
             st.session_state.ypt = st.selectbox("ypT分類*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4"], index=0)
+            
+            # ypN陽性部位のロジック
             st.session_state.ypn = st.selectbox("ypN分類*", ["選択してください", "ypN0", "ypN1", "ypN2"], index=0)
+            if st.session_state.ypn != "ypN0" and st.session_state.ypn != "選択してください":
+                st.session_state.ypn_pos_sites = st.multiselect("陽性部位（リンパ節郭清部位より選択）*", options=["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
+            
             st.session_state.p_multiplicity = st.radio("多発性*", ["単発", "多発"], index=None, horizontal=True)
             st.session_state.p_lvi = st.radio("LVI（脈管侵襲）*", ["なし", "あり"], index=None, horizontal=True)
             st.session_state.r0_status = st.radio("R0切除*", ["陰性", "陽性"], index=None, horizontal=True)
@@ -201,6 +228,6 @@ with tab4:
         if not patient_id: st.error("IDを入力してください")
         elif st.session_state.status_alive is None: st.error("生存状況を選択してください")
         else:
-            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}"
+            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\nCD分類: {st.session_state.cd_grade}\nypN: {st.session_state.ypn} (陽性部位: {st.session_state.ypn_pos_sites})\nTRG: {st.session_state.trg_grade}"
             if send_email(rep, patient_id): st.success("送信完了しました！"); st.balloons()
             else: st.error("送信失敗しました。")
