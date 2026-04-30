@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS ---
+# --- JUOG専用デザインCSS (変更なし) ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -66,7 +66,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 施設リスト（あいうえお順） ---
+# --- 施設リスト ---
 FACILITY_LIST = [
     "選択してください", "愛知県がんセンター", "秋田大学", "愛媛大学", "大分大学", "大阪公立大学", 
     "大阪大学", "大阪府済生会野江病院", "岡山大学", "香川大学", "鹿児島大学", "関西医科大学", 
@@ -78,7 +78,7 @@ FACILITY_LIST = [
     "横浜市立大学", "琉球大学", "和歌山県立医科大学", "その他"
 ]
 
-# --- ヘルプテキスト定義（完全復元） ---
+# --- ヘルプテキスト定義 ---
 HELP_EAUIAIC = """
 **術中合併症（EAUiaiC）詳細定義**
 - **Grade 0**： 介入や手術アプローチの変更を要さず、予定された手術手順からの逸脱がないもの。患者への影響がないもの。
@@ -97,13 +97,25 @@ Voskuilen らの提唱する分類。
 - **TRG 3：Weak and No Response**: 生存がん細胞が優位（50%以上）、または変化なし。
 """
 
+# 指示箇所：詳細な定義への書き換え
 HELP_CD = """
 **Clavien-Dindo 分類 (術後30日以内)**
-- **Grade I**: 薬物、外科、内視鏡、IVR治療を要さない。
-- **Grade II**: 上記以外の薬物療法、輸血、中心静脈栄養を要する。
-- **Grade III**: 外科、内視鏡、IVR治療を要する（IIIa: 局麻、IIIb: 全麻下）。
-- **Grade IV**: ICU管理を要する生命を脅かす合併症。
-- **Grade V**: 患者の死亡。
+Gradingの原則：
+
+- **Grade I**：正常な術後経過からの逸脱で、薬物療法、または外科的治療、内視鏡的治療、IVR 治療を要さないもの。
+ただし、制吐剤、解熱剤、鎮痛剤、利尿剤による治療、電解質補充、理学療法は必要とする治療には含めない。また、ベッドサイドでの創感染の開放は Grade I とする。
+
+- **Grade II**：制吐剤、解熱剤、鎮痛剤、利尿剤以外の薬物療法を要する。輸血および中心静脈栄養を要する場合を含む。
+
+- **Grade III**：外科的治療、内視鏡的治療、IVR 治療を要する。
+    - **Grade IIIa**：全身麻酔を要さない治療
+    - **Grade IIIb**：全身麻酔下での治療
+
+- **Grade IV**：ICU 管理を要する、生命を脅かす合併症（中枢神経系の合併症を含む）
+    - **Grade IVa**：単一の臓器不全（透析を含む）
+    - **Grade IVb**：多臓器不全
+
+- **Grade V**：患者の死亡
 """
 
 # --- セッション状態初期化 ---
@@ -114,10 +126,10 @@ if 'init_done' not in st.session_state:
         "vital_detail": "N/A", "bladder_tumor_tx": "N/A", "op_performed": None,
         "op_date": None, "op_admission_date": None, "op_discharge_date": None,
         "op_type": "未選択", "approach": "未選択", "op_completed": "未選択", "op_incomplete_detail": "N/A",
-        "op_time": 0, "bleeding": 0, "eau_grade": "未選択", "eau_detail": "N/A", "ln_dissection": "未選択",
+        "op_time": None, "bleeding": None, "eau_grade": "未選択", "eau_detail": "N/A", "ln_dissection": "未選択",
         "ln_range": [], "p_histology": "未選択", "p_histology_other": "N/A",
         "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
-        "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
+        "p_size": None, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
         "p_multiplicity": "未選択", "p_lvi": "未選択", "r0_status": "未選択", "p_eval_failed_reason": "",
         "trg_grade": None, "no_op_reason": "選択してください", "no_op_reason_other": "", "cd_grade": "未選択", "cd_detail": "N/A",
         "adj_plan": "選択してください", "adj_other_detail": "", "status_alive": None,
@@ -156,7 +168,7 @@ with tab1:
     st.markdown('<div class="juog-header">1. 術前EVP・身体所見</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-        last_evp_date = st.date_input("最終EVP投与日", value=None)
+        st.date_input("最終EVP投与日", value=None)
         pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
         st.caption("[JCOG版 CTCAE v6.0 日本語訳（外部リンク）](https://jcog.jp/assets/CTCAEv6J_20260301_v28_0.pdf)")
         ae_detail = st.text_input("CTCAE（詳細記載）") if pre_ae_grade not in ["選択してください", "なし"] else "なし"
@@ -169,6 +181,7 @@ with tab1:
     st.markdown('<div class="juog-header">2. 術前血液検査（一か月以内）</div>', unsafe_allow_html=True)
     bc1, bc2 = st.columns(2)
     with bc1:
+        # 指示箇所：デフォルト値を None に設定
         wbc = st.number_input("WBC (/μL)*", value=None, step=1)
         hb = st.number_input("Hb (g/dL)*", value=None, step=0.1)
         plt = st.number_input("PLT (x10^4/μL)*", value=None, step=1)
@@ -292,7 +305,6 @@ with tab4:
                 elif st.session_state.no_op_reason == "その他" and not st.session_state.no_op_reason_other.strip(): h_errors.append("・「その他」の具体的な理由入力")
             if st.session_state.status_alive is None: h_errors.append("・生存状況")
             
-            # 病理評価不能時の理由必須チェック
             if st.session_state.op_performed == "実施した":
                 p_check_vals = [st.session_state.p_histology, st.session_state.p_morphology, st.session_state.ypt, st.session_state.ypn, st.session_state.p_lvi, st.session_state.r0_status, st.session_state.trg_grade]
                 if "評価不能" in p_check_vals and not st.session_state.p_eval_failed_reason.strip():
@@ -326,7 +338,6 @@ with tab4:
             st.rerun()
 
     if st.session_state.do_send:
-        # レポート構成
         rep = f"""
 【基本情報】
 施設: {st.session_state.facility_name} / ID: {st.session_state.patient_id}
