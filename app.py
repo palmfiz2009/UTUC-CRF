@@ -8,35 +8,35 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS ---
+# --- JUOG専用デザインCSS（レイアウトと固定化） ---
 st.markdown("""
     <style>
     /* 1. 標準ヘッダーを非表示 */
-    header[data-testid="stHeader"] { display: none !important; }
+    header[data-testid="stHeader"] { visibility: hidden; }
     
-    /* 2. 全体の横幅を1100pxに厳密に固定し、余白を調整 */
-    .main .block-container { 
-        padding-top: 40px !important; 
+    /* 2. 横幅を1100pxに厳密に固定 */
+    .block-container { 
         max-width: 1100px !important; 
-        margin: auto;
+        padding-top: 1.5rem !important; 
+        padding-bottom: 5rem !important; 
+        margin: auto !important;
     }
     
-    /* 3. タイトルの位置を完全に固定してガタつきを防止 */
+    /* 3. タイトル位置を固定してガタつきを防止 */
     h1 { 
         font-size: 26px !important; 
         color: #0F172A; 
         text-align: center; 
-        margin-top: 0px !important;
-        margin-bottom: 35px !important; 
+        margin-top: 0px !important; 
+        margin-bottom: 30px !important; 
         font-weight: 800; 
     }
 
-    /* 4. 施設名・IDエリア（灰色バーや枠線を徹底除去） */
+    /* 4. 施設名・IDエリア（灰色バーや背景を完全除去） */
     .top-info-bar {
         background-color: transparent !important;
         padding: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 30px !important;
+        margin-bottom: 25px !important;
         border: none !important;
     }
     
@@ -51,13 +51,13 @@ st.markdown("""
         margin-bottom: 15px;
     }
     
-    label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
+    label { font-weight: 600 !important; color: #334155 !important; }
 
-    /* セレクトボックスの選択肢を折り返し */
+    /* セレクトボックス折り返し */
     div[data-baseweb="select"] ul { white-space: normal !important; }
     div[role="option"] { line-height: 1.4 !important; padding: 8px !important; }
 
-    /* スタイリッシュなタブ（下線方式） */
+    /* タブデザイン（下線方式） */
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #E2E8F0; }
     .stTabs [data-baseweb="tab"] {
         background-color: transparent !important;
@@ -71,7 +71,7 @@ st.markdown("""
         border-bottom: 3px solid #1E3A8A !important;
     }
     
-    /* 入力枠の標準化 */
+    /* 入力枠標準化 */
     .stSelectbox div[data-baseweb="select"], .stNumberInput input, .stTextInput input, .stTextArea textarea {
         background-color: transparent !important;
         border: 1px solid #E2E8F0 !important;
