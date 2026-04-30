@@ -119,7 +119,7 @@ if 'init_done' not in st.session_state:
         "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
         "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
         "p_multiplicity": "未選択", "p_lvi": "未選択", "r0_status": "未選択", "p_eval_failed_reason": "",
-        "trg_grade": None, "no_op_reason": "未選択", "cd_grade": "未選択", "cd_detail": "N/A",
+        "trg_grade": None, "no_op_reason": "選択してください", "no_op_reason_other": "", "cd_grade": "未選択", "cd_detail": "N/A",
         "adj_plan": "選択してください", "adj_other_detail": "", "needs_confirm": False, "do_send": False
     }
     for k, v in defaults.items():
@@ -210,7 +210,11 @@ with tab2:
             if st.session_state.ln_dissection == "実施した":
                 st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
     elif st.session_state.op_performed == "実施しなかった":
-        st.session_state.no_op_reason = st.selectbox("実施しなかった理由*", ["選択してください", "病勢進行", "有害事象の発生", "同意撤回", "その他"], index=0)
+        # 指示：文言の変更および「その他」の理由入力枠の追加
+        no_op_options = ["選択してください", "病勢進行", "G3以上のEVP関連有害事象の発生", "同意撤回", "その他"]
+        st.session_state.no_op_reason = st.selectbox("実施しなかった理由*", no_op_options, index=no_op_options.index(st.session_state.no_op_reason) if st.session_state.no_op_reason in no_op_options else 0)
+        if st.session_state.no_op_reason == "その他":
+            st.session_state.no_op_reason_other = st.text_area("「その他」の理由を入力してください*", value=st.session_state.no_op_reason_other)
 
 with tab3:
     if st.session_state.op_performed == "実施した":
@@ -256,7 +260,6 @@ with tab4:
             if st.session_state.cd_grade not in ["選択してください", "Grade 0"]: st.session_state.cd_detail = st.text_area("CD分類詳細*")
         else: st.session_state.cd_grade = "N/A"
     with sc2:
-        # 指示：GCとGCarboを分割。手術実施状況に合わせて文言を出し分ける
         if st.session_state.op_performed == "実施した":
             adj_options = [
                 "選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", 
@@ -274,7 +277,6 @@ with tab4:
                 "その他（放射線療法、治験参加、転移巣切除など）"
             ]
         
-        # 安全にインデックスを取得
         current_adj = st.session_state.adj_plan
         idx = adj_options.index(current_adj) if current_adj in adj_options else 0
         st.session_state.adj_plan = st.selectbox("今後の治療予定（または実施中）*", adj_options, index=idx)
@@ -295,9 +297,16 @@ with tab4:
             if st.session_state.facility_name == "選択してください": h_errors.append("・施設名")
             if not st.session_state.patient_id: h_errors.append("・研究対象者識別コード")
             if st.session_state.op_performed is None: h_errors.append("・手術の実施の有無")
+            
+            # 手術未実施時の「その他」理由必須チェック
+            if st.session_state.op_performed == "実施しなかった":
+                if st.session_state.no_op_reason == "選択してください":
+                    h_errors.append("・手術を実施しなかった理由")
+                elif st.session_state.no_op_reason == "その他" and not st.session_state.no_op_reason_other.strip():
+                    h_errors.append("・「その他」を選択した理由の入力")
+
             if st.session_state.status_alive is None: h_errors.append("・生存状況")
             
-            # 評価不能時の理由必須チェック
             if st.session_state.op_performed == "実施した":
                 p_check_vals = [st.session_state.p_histology, st.session_state.p_morphology, st.session_state.ypt, st.session_state.ypn, st.session_state.p_lvi, st.session_state.r0_status, st.session_state.trg_grade]
                 if "評価不能" in p_check_vals and not st.session_state.p_eval_failed_reason.strip():
@@ -307,7 +316,6 @@ with tab4:
                 st.error("【必須入力エラー】以下の項目を必ず入力してください：\n" + "\n".join(h_errors))
             else:
                 s_errors = []
-                # 採血項目のSoftチェック
                 blood_items = {"WBC":wbc, "Hb":hb, "PLT":plt, "AST":ast, "ALT":alt, "LDH":ldh, "Alb":alb, "Cre":cre, "eGFR":egfr}
                 for k, v in blood_items.items(): 
                     if v == 0 or v == 0.0: s_errors.append(k)
@@ -332,7 +340,11 @@ with tab4:
             st.rerun()
 
     if st.session_state.do_send:
-        # レポート構成（全項目網羅）
+        # 理由の最終テキスト化
+        final_no_op_reason = st.session_state.no_op_reason
+        if final_no_op_reason == "その他":
+            final_no_op_reason = f"その他: {st.session_state.no_op_reason_other}"
+
         rep = f"""
 【基本情報】
 施設: {st.session_state.facility_name} / ID: {st.session_state.patient_id}
@@ -342,7 +354,7 @@ WBC: {f_num(wbc)}, Hb: {f_num(hb)}, PLT: {f_num(plt)}, AST: {f_num(ast)}, ALT: {
 分画: Neutro {f_num(neutro)}%, Lympho {f_num(lympho)}%, Mono {f_num(mono)}%, Eosino {f_num(eosino)}%, Baso {f_num(baso)}%
 
 【手術状況】
-実施: {st.session_state.op_performed} / 理由: {st.session_state.no_op_reason}
+実施: {st.session_state.op_performed} / 理由: {final_no_op_reason}
 入院日: {st.session_state.op_admission_date} / 手術日: {st.session_state.op_date} / 退院(予定)日: {st.session_state.op_discharge_date}
 術式: {st.session_state.op_type} / 完遂: {st.session_state.op_completed} (理由: {st.session_state.op_incomplete_detail}) / EAU: {st.session_state.eau_grade}
 
