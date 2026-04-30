@@ -40,21 +40,21 @@ HELP_EAUIAIC = """
 - **Grade 0**: 逸脱なし。
 - **Grade 1**: 追加処置あり。後遺症なし。
 - **Grade 2**: 主要な追加処置あり。後遺症の可能性。
-- **Grade 3**: 生命を脅かすが臓器摘出不要。
-- **Grade 4**: 臓器摘出(4A) または 完遂不能(4B)。
-- **Grade 5**: 患者間違い(5A) または 術中死亡(5B)。
+- **Grade 3**: 生命を脅かすが臓器摘出不要.
+- **Grade 4**: 臓器摘出(4A) または 完遂不能(4B).
+- **Grade 5**: 患者間違い(5A) または 術中死亡(5B).
 """
 HELP_TRG = """
-- **TRG 1**: 生存がん細胞なし。
-- **TRG 2**: 生存がん細胞 50%未満。
-- **TRG 3**: 生存がん細胞 50%以上 または 変化なし。
+- **TRG 1**: 生存がん細胞なし.
+- **TRG 2**: 生存がん細胞 50%未満.
+- **TRG 3**: 生存がん細胞 50%以上 または 変化なし.
 """
 HELP_CD = """
-- **Grade I**: 薬剤・手術不要（解熱剤等は含む）。
-- **Grade II**: 輸血、中心静脈栄養が必要。
-- **Grade III**: 外科・内視鏡治療（IIIa: 局麻、IIIb: 全麻）。
-- **Grade IV**: ICU管理（単一臓器不全 IVa, 多臓器不全 IVb）。
-- **Grade V**: 死亡。
+- **Grade I**: 薬剤・手術不要（解熱剤等は含む）.
+- **Grade II**: 輸血、中心静脈栄養が必要.
+- **Grade III**: 外科・内視鏡治療（IIIa: 局麻、IIIb: 全麻）.
+- **Grade IV**: ICU管理（単一臓器不全 IVa, 多臓器不全 IVb）.
+- **Grade V**: 死亡.
 """
 
 # --- 変数初期化 ---
@@ -205,15 +205,17 @@ with tab4:
             st.session_state.cd_detail = st.text_area("CD分類 詳細")
         else: st.session_state.cd_grade = "N/A"
     with sc2:
-        adj_plan = st.selectbox("今後の治療予定*", 
+        # 指示：ラベルの変更と選択肢の文言修正
+        adj_plan = st.selectbox("今後の治療予定（または実施中）*", 
                                 ["選択してください", 
                                  "無治療（経過観察）", 
-                                 "EVP継続投与（予定回数の完遂まで）", 
+                                 "EVP継続投与", 
                                  "ペムブロリズマブ単剤維持療法", 
                                  "ニボルマブ単剤療法（術後補助療法として）", 
                                  "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", 
                                  "その他（放射線療法、治験参加など）"], index=0)
-        adj_date = st.date_input("次回フォロー予定日*", value=None)
+        # 指示：ラベルの変更
+        adj_date = st.date_input("次回治療開始予定日または実施日*", value=None)
         st.session_state.status_alive = st.radio("生存状況（術後30日時点）*", ["生存", "死亡"], index=None, horizontal=True)
 
     st.divider()
@@ -223,6 +225,6 @@ with tab4:
         elif op_performed == "実施した" and st.session_state.op_date and last_evp_date and st.session_state.op_date <= last_evp_date:
             st.error("手術日のエラーを修正してください")
         else:
-            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\n最終EVP: {last_evp_date}\nCre: {cre}\neGFR: {egfr}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}\nEAUiaiC詳細: {st.session_state.eau_detail}"
+            rep = f"ID: {patient_id}\n生存: {st.session_state.status_alive}\n手術: {op_performed}\n最終EVP: {last_evp_date}\nCre: {cre}\neGFR: {egfr}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}\nEAUiaiC詳細: {st.session_state.eau_detail}\n今後の予定: {adj_plan}\n次回予定日: {adj_date}"
             if send_email(rep, patient_id): st.success("送信完了しました！"); st.balloons()
             else: st.error("送信失敗しました。")
