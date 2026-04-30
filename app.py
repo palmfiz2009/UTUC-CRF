@@ -8,38 +8,25 @@ from email.mime.multipart import MIMEMultipart
 # --- ページ設定 ---
 st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 
-# --- JUOG専用デザインCSS ---
+# --- JUOG専用デザインCSS (写真のスタイルを再現) ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; }
     .block-container { padding-top: 2rem !important; max-width: 1000px !important; margin: auto; }
-    
-    /* 登録用CRF風ヘッダーバー */
     .juog-header {
         background-color: #1E3A8A;
         color: white;
         padding: 10px 20px;
         border-radius: 8px;
         font-weight: bold;
-        font-size: 18px;
+        font-size: 16px;
         margin-top: 25px;
         margin-bottom: 15px;
     }
-    
-    h1 { font-size: 28px !important; color: #0F172A; text-align: center; margin-bottom: 30px !important; font-weight: 800; }
+    h1 { font-size: 26px !important; color: #0F172A; text-align: center; margin-bottom: 30px !important; font-weight: 800; }
     label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
-    
-    /* タブのデザイン調整 */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #F1F5F9;
-        border-radius: 5px 5px 0 0;
-        padding: 10px 20px;
-        font-weight: 600;
-    }
     .stTabs [aria-selected="true"] { background-color: #1E3A8A !important; color: white !important; }
-    
-    /* 入力枠のスタイル */
+    /* 数値入力やテキスト入力の枠をスッキリさせる */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
@@ -47,38 +34,37 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 変数初期化（NameError防止） ---
-# 送信レポート作成時に、非表示項目が参照されてもエラーにならないよう初期化しておきます
-vital_detail = "N/A"
-bladder_tumor_tx = "N/A"
-op_date = "N/A"
-op_type = "N/A"
-approach = "N/A"
-op_completed = "N/A"
-op_incomplete_detail = "N/A"
-op_time = 0
-bleeding = 0
-eau_grade = "N/A"
-ln_dissection = "N/A"
-ln_range = []
-p_histology = "N/A"
-p_histology_other = "N/A"
-p_subtype_type = "N/A"
-p_morphology = "N/A"
-p_size = 0.0
-p_location = []
-ypt = "N/A"
-ypn = "N/A"
-p_multiplicity = "N/A"
-p_lvi = "N/A"
-r0_status = "N/A"
-trg_grade = "N/A"
-no_op_reason = "N/A"
+# --- 全変数の初期化 (NameError防止) ---
+vars_list = [
+    "patient_id", "last_evp_date", "pre_ae_grade", "ae_detail", "vital_abnormality", "vital_detail",
+    "cysto_find", "bladder_tumor_tx", "wbc", "hb", "plt", "ast", "alt", "ldh", "alb", "bun", "cre", "crp",
+    "neutro", "lympho", "mono", "eosino", "baso", "op_performed", "op_date", "op_type", "approach",
+    "op_completed", "op_incomplete_detail", "op_time", "bleeding", "eau_grade", "ln_dissection", 
+    "ln_range", "ln_other", "no_op_reason", "p_histology", "p_histology_other", "p_subtype_presence", 
+    "p_subtype_type", "p_morphology", "p_size", "p_location", "ypt", "ypn", "p_multiplicity", 
+    "p_lvi", "r0_status", "trg_grade", "cd_grade", "cd_detail", "adj_plan", "adj_date", "status_alive", "death_date"
+]
+for v in vars_list:
+    if v not in st.session_state:
+        st.session_state[v] = None if "date" in v else "未入力"
 
-# --- ヘルプテキスト ---
-HELP_EAUIAIC = "術中合併症の評価指標（EAUiaiC分類）。詳細はプロトコルまたは？マークを確認してください。"
-HELP_TRG = "腫瘍床における線維化と生存腫瘍細胞の割合に基づく病理学的治療効果判定。"
-HELP_CD = "術後30日以内の合併症分類。"
+# --- 説明文の定義 ---
+EAU_DESC = """
+**術中合併症（EAUiaiC）分類**[cite: 3, 4]
+- **Grade 0**: 逸脱なし。影響なし。
+- **Grade 1**: 追加処置あり。後遺症なし。（追加の止血処置など）
+- **Grade 2**: 主要な追加処置あり。後遺症の可能性あり。
+- **Grade 3**: 生命を脅かす事態。臓器摘出なし。
+- **Grade 4**: 4A: 臓器の一部または全摘出。 4B: 手術完遂不能。
+- **Grade 5**: 5A: 部位・患者間違い。 5B: 術中死亡。
+"""
+
+TRG_DESC = """
+**病理学的治療効果（TRG分類）**[cite: 3, 4]
+- **TRG 1**: 生存がん細胞を認めない。
+- **TRG 2**: 生存がん細胞の占める割合が50%未満。
+- **TRG 3**: 生存がん細胞の占める割合が50%以上、または変化なし。
+"""
 
 # --- メール送信関数 ---
 def send_email(report_content, pid):
@@ -96,11 +82,13 @@ def send_email(report_content, pid):
         server.send_message(msg)
         server.quit()
         return True
-    except: return False
+    except Exception as e:
+        st.error(f"送信エラー: {str(e)}")
+        return False
 
-st.title("JUOG UTUC_Trial：術後30日目評価CRF")
+st.title("JUOG UTUC_Conlidative 登録用CRF")
 
-# --- メインフォーム ---
+# --- メイン入力フォーム ---
 patient_id = st.text_input("研究対象者識別コード*")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📊 術前・登録時", "🔪 手術記録", "🔬 病理結果", "📋 30日目評価"])
@@ -111,8 +99,7 @@ with tab1:
     c1, c2 = st.columns(2)
     with c1:
         last_evp_date = st.date_input("最終EVP投与日", value=None)
-        pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", 
-                                   ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
+        pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
         ae_detail = st.text_input("CTCAE（詳細記載）")
     with c2:
         vital_abnormality = st.radio("術前身体所見およびバイタルサインの異常*", ["異常なし", "異常あり"], index=None, horizontal=True)
@@ -126,19 +113,17 @@ with tab1:
     st.markdown('<div class="juog-header">2. 術前血液検査（一か月以内）</div>', unsafe_allow_html=True)
     bc1, bc2 = st.columns(2)
     with bc1:
-        wbc = st.number_input("WBC (/μL)*", value=None, format="%d")
+        wbc = st.number_input("WBC (/μL)*", value=None, step=1, format="%d")
         hb = st.number_input("Hb (g/dL)*", value=None, format="%.1f")
-        plt = st.number_input("PLT (x10^4/μL)*", value=None, format="%d")
-        ast = st.number_input("AST (U/L)*", value=None, format="%d")
-        alt = st.number_input("ALT (U/L)*", value=None, format="%d")
+        plt = st.number_input("PLT (x10^4/μL)*", value=None, step=1, format="%d")
     with bc2:
-        ldh = st.number_input("LDH (U/L)*", value=None, format="%d")
-        alb = st.number_input("Alb (g/dL)*", value=None, format="%.1f")
-        bun = st.number_input("BUN (mg/dL)*", value=None, format="%d")
+        ast = st.number_input("AST (U/L)*", value=None, step=1, format="%d")
+        alt = st.number_input("ALT (U/L)*", value=None, step=1, format="%d")
         cre = st.number_input("Cre (mg/dL)*", value=None, format="%.2f")
         crp = st.number_input("CRP (mg/dL)*", value=None, format="%.2f")
 
     st.markdown('<div class="juog-header">3. 白血球分画 (%)</div>', unsafe_allow_html=True)
+    # スッキリさせるため展開
     f1, f2, f3, f4, f5 = st.columns(5)
     neutro = f1.number_input("Neutro*", value=None, format="%.1f")
     lympho = f2.number_input("Lympho*", value=None, format="%.1f")
@@ -160,19 +145,21 @@ with tab2:
             op_completed = st.radio("予定手術が完遂できたか*", ["はい", "いいえ"], index=None, horizontal=True)
             if op_completed == "いいえ":
                 op_incomplete_detail = st.text_area("完遂できなかった理由・詳細*")
-            op_time = st.number_input("手術時間 (分)*", value=None, format="%d")
-            bleeding = st.number_input("出血量 (mL)*", value=None, format="%d")
+            op_time = st.number_input("手術時間 (分)*", value=None, step=1, format="%d")
+            bleeding = st.number_input("出血量 (mL)*", value=None, step=1, format="%d")
         with oc2:
-            eau_grade = st.selectbox("術中合併症（EAUiaiC）*", 
-                                   ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], 
-                                   index=0, help=HELP_EAUIAIC)
+            st.write("術中合併症（EAUiaiC）*")
+            with st.expander("EAUiaiC分類の説明を表示"):
+                st.markdown(EAU_DESC)
+            eau_grade = st.selectbox("分類を選択してください", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0)
+            
             ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=None, horizontal=True)
             if ln_dissection == "実施した":
-                ln_range = st.multiselect("リンパ節郭清範囲*", 
-                                        ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
+                ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
+
     elif op_performed == "実施しなかった":
         no_op_reason = st.selectbox("実施しなかった理由*", ["選択してください", "病勢進行", "有害事象の発生", "同意撤回", "その他"], index=0)
-        st.info("手術未実施のため、病理結果の入力は不要です。「30日目評価」タブへ進んでください。")
+        st.info("手術未実施のため病理結果は不要です。30日目評価へ進んでください。")
 
 # --- タブ3: 病理結果 ---
 with tab3:
@@ -180,21 +167,17 @@ with tab3:
         st.markdown('<div class="juog-header">5. 術後病理診断</div>', unsafe_allow_html=True)
         pc1, pc2 = st.columns(2)
         with pc1:
-            p_histology = st.selectbox("組織型*", 
-                                      ["選択してください", "Urothelial carcinoma", "Squamous cell carcinoma", "Adenocarcinoma", "Other"], index=0)
+            p_histology = st.selectbox("組織型*", ["選択してください", "Urothelial carcinoma", "Squamous cell carcinoma", "Adenocarcinoma", "Other"], index=0)
             if p_histology == "Other":
                 p_histology_other = st.text_input("組織型 詳細*")
             
             p_subtype_presence = st.radio("亜型の有無*", ["なし", "あり"], index=None, horizontal=True)
             if p_subtype_presence == "あり":
-                p_subtype_type = st.multiselect("亜型の種類 (UC Variant)*", 
-                                              ["Nest型", "Micropapillary型", "Plasmacytoid型", "Sarcomatoid変化", "Lymphoepithelioma-like型", "Clear cell型", "Lipid-rich型", "Trophoblastic分化", "Glandular分化", "Squamous分化"])
+                p_subtype_type = st.multiselect("亜型の種類 (UC Variant)*", ["Nest型", "Micropapillary型", "Plasmacytoid型", "Sarcomatoid変化", "Lymphoepithelioma-like型", "Clear cell型", "Lipid-rich型", "Trophoblastic分化", "Glandular分化", "Squamous分化"])
             
             p_morphology = st.text_input("形態（乳頭状、結節状など）")
             p_size = st.number_input("大きさ (最大径 mm)*", value=None, format="%.1f")
-            
-            p_location = st.multiselect("場所（複数選択可）*", 
-                                       ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
+            p_location = st.multiselect("場所 (複数選択可)*", ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
             
         with pc2:
             ypt = st.selectbox("ypT分類*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4"], index=0)
@@ -202,9 +185,11 @@ with tab3:
             p_multiplicity = st.radio("多発性*", ["単発", "多発"], index=None, horizontal=True)
             p_lvi = st.radio("LVI（脈管侵襲）の有無*", ["なし", "あり"], index=None, horizontal=True)
             r0_status = st.radio("R0切除 (断端陰性)*", ["陰性", "陽性"], index=None, horizontal=True)
-            trg_grade = st.radio("病理学的治療効果（TRG分類）*", 
-                               ["TRG 1： Complete Response", "TRG 2： Strong Response", "TRG 3： Weak and No Response"], 
-                               index=None, help=HELP_TRG)
+            
+            st.write("病理学的治療効果（TRG分類）*")
+            with st.expander("TRG分類の説明を表示"):
+                st.markdown(TRG_DESC)
+            trg_grade = st.radio("評価を選択", ["TRG 1： Complete Response", "TRG 2： Strong Response", "TRG 3： Weak and No Response"], index=None)
     else:
         st.write("手術未実施のため入力項目はありません。")
 
@@ -212,48 +197,45 @@ with tab3:
 with tab4:
     st.markdown('<div class="juog-header">6. 術後30日目（フォローアップ）評価</div>', unsafe_allow_html=True)
     
-    # 30日目アラート
     if op_performed == "実施した" and op_date:
         target_30day = op_date + timedelta(days=30)
-        st.info(f"術後30日目目安: **{target_30day}**")
+        st.info(f"この症例の術後30日目は **{target_30day}** です。")
         if date.today() < target_30day:
-            st.warning(f"【アラート】術後30日（{target_30day}）に達していません。")
+            st.warning(f"【アラート】まだ術後30日に達していません（あと {(target_30day - date.today()).days} 日）。")
 
     sc1, sc2 = st.columns(2)
     with sc1:
         if op_performed == "実施した":
-            cd_grade = st.selectbox("術後合併症 (Clavien-Dindo分類)*", 
-                                   ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade IIIa", "Grade IIIb", "Grade IVa", "Grade IVb", "Grade V"], 
-                                   index=0, help=HELP_CD)
+            cd_grade = st.selectbox("術後合併症 (Clavien-Dindo分類)*", ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade IIIa", "Grade IIIb", "Grade IVa", "Grade IVb", "Grade V"], index=0)
             cd_detail = st.text_area("CD分類 詳細")
         else:
-            st.write("手術未実施のため、合併症評価はスキップします。")
             cd_grade = "N/A"
 
     with sc2:
-        adj_plan = st.selectbox("今後の治療（術後補助療法）予定*", 
-                               ["選択してください", "経過観察", "EVP継続", "ペムブロ単剤", "ニボ単剤", "プラチナ製剤", "その他"], index=0)
+        adj_plan = st.selectbox("今後の治療予定*", ["選択してください", "経過観察", "EVP継続", "ペムブロ単剤", "ニボ単剤", "プラチナ製剤", "その他"], index=0)
         adj_date = st.date_input("次回フォロー/治療予定日*", value=None)
         status_alive = st.radio("生存状況（術後30日時点）*", ["生存", "死亡"], index=None, horizontal=True)
 
     # --- 送信セクション ---
     st.divider()
     
-    # レポート作成（手術未実施でもエラーにならないよう初期化した値を使用）
+    # 最終的なレポートデータの組み立て
     report_data = f"""【JUOG UTUC_Trial CRF Report】
 ID: {patient_id}
-膀胱鏡: {cysto_find} (詳細: {bladder_tumor_tx})
-WBC: {wbc} / Hb: {hb} / AST: {ast} / ALT: {alt}
+膀胱鏡: {cysto_find} (詳細: {st.session_state.get('bladder_tumor_tx', 'N/A')})
+WBC: {wbc} / Hb: {hb} / Cre: {cre} / CRP: {crp}
 分画: Ne:{neutro}/Ly:{lympho}/Mo:{mono}/Eo:{eosino}/Ba:{baso}
 
 手術実施: {op_performed}
-理由(未実施時): {no_op_reason}
-完遂: {op_completed} (詳細: {op_incomplete_detail})
-術式: {op_type} / アプローチ: {approach} / 合併症(EAU): {eau_grade}
+理由(未実施時): {st.session_state.get('no_op_reason', 'N/A')}
+完遂: {st.session_state.get('op_completed', 'N/A')}
+術式: {st.session_state.get('op_type', 'N/A')} / アプローチ: {st.session_state.get('approach', 'N/A')}
+時間: {st.session_state.get('op_time', '0')}分 / 出血: {st.session_state.get('bleeding', '0')}mL
+EAUiaiC: {st.session_state.get('eau_grade', 'N/A')}
 
-病理組織: {p_histology} ({p_histology_other}) / 亜型: {p_subtype_type}
-場所: {p_location} / 大きさ: {p_size}mm / LVI: {p_lvi}
-ypT: {ypt} / ypN: {ypn} / TRG: {trg_grade}
+病理組織: {st.session_state.get('p_histology', 'N/A')}
+場所: {st.session_state.get('p_location', 'N/A')} / 大きさ: {st.session_state.get('p_size', '0')}mm
+ypT: {st.session_state.get('ypt', 'N/A')} / ypN: {st.session_state.get('ypn', 'N/A')} / TRG: {st.session_state.get('trg_grade', 'N/A')}
 
 CD分類: {cd_grade}
 補助療法: {adj_plan} / 予定日: {adj_date}
@@ -272,7 +254,5 @@ CD分類: {cd_grade}
                 st.error("生存状況を選択してください")
             else:
                 if send_email(report_data, patient_id):
-                    st.success("事務局への送信が完了しました！")
+                    st.success("送信完了しました！")
                     st.balloons()
-                else: 
-                    st.error("送信に失敗しました。Secretsの設定を確認してください。")
