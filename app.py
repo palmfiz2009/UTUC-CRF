@@ -12,7 +12,17 @@ st.set_page_config(page_title="JUOG UTUC_Trial CRF", layout="wide")
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; }
-    .block-container { padding-top: 2rem !important; max-width: 1000px !important; margin: auto; }
+    .block-container { padding-top: 1.5rem !important; max-width: 1000px !important; margin: auto; }
+    
+    /* 施設名とIDのヘッダーバー */
+    .top-info-bar {
+        background-color: #F1F5F9;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #1E3A8A;
+        margin-bottom: 20px;
+    }
+    
     .juog-header {
         background-color: #1E3A8A;
         color: white;
@@ -23,8 +33,20 @@ st.markdown("""
         margin-top: 25px;
         margin-bottom: 15px;
     }
-    h1 { font-size: 26px !important; color: #0F172A; text-align: center; margin-bottom: 30px !important; font-weight: 800; }
+    
+    h1 { font-size: 26px !important; color: #0F172A; text-align: center; margin-bottom: 20px !important; font-weight: 800; }
     label { font-size: 14px !important; font-weight: 600 !important; color: #334155 !important; }
+
+    /* 長い選択肢を折り返して表示するCSS */
+    div[data-baseweb="select"] ul {
+        white-space: normal !important;
+    }
+    div[role="option"] {
+        line-height: 1.4 !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+    }
+
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #E2E8F0; }
     .stTabs [data-baseweb="tab"] { background-color: transparent !important; border: none !important; color: #64748B !important; padding: 10px 4px !important; font-weight: 600 !important; }
     .stTabs [aria-selected="true"] { color: #1E3A8A !important; border-bottom: 3px solid #1E3A8A !important; }
@@ -35,11 +57,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ヘルプテキスト定義 (箇条書きで詳細化) ---
+# --- ヘルプテキスト定義 ---
 HELP_EAUIAIC = """
 **術中合併症（EAUiaiC）詳細基準**
-- **Grade 0**: 手順からの逸脱なし、介入なし、患者への影響なし
-- **Grade 1**: 手順の逸脱・追加処置はあるが、生命に危険がなく後遺症を残さない（例：止血のための追加クリッピング、予定外の剥離）
+- **Grade 0**: 逸脱なし、介入なし、患者への影響なし
+- **Grade 1**: 追加処置はあるが、生命に危険がなく後遺症を残さない（例：止血のための追加クリップ、予定外の授動）
 - **Grade 2**: 主要な追加処置が必要。短期的・長期的な後遺症を残す可能性あり
 - **Grade 3**: 生命を脅かす事態だが、臓器摘出（全摘・部分摘出）までは要さない
 - **Grade 4**: 重大な結果をもたらす事態
@@ -64,21 +86,18 @@ HELP_TRG = """
 """
 
 HELP_CD = """
-- **Grade I**: 正常な術後経過からの逸脱。薬剤（解熱剤、利尿剤等）、手術、介入不要
+- **Grade I**: 薬剤（解熱剤、利尿剤等）、手術、介入不要
 - **Grade II**: 輸血、中心静脈栄養、Grade I以外の薬物療法が必要
-- **Grade III**: 外科・内視鏡治療、IVRが必要
-    - **IIIa**: 全身麻酔不要
-    - **IIIb**: 全身麻酔下での治療
-- **Grade IV**: ICU管理を要する生命を脅かす合併症
-    - **IVa**: 単一臓器不全（透析など）
-    - **IVb**: 多臓器不全
+- **Grade III**: 外科・内視鏡治療、IVRが必要（IIIa: 局麻、IIIb: 全麻）
+- **Grade IV**: ICU管理（IVa: 単一臓器不全、IVb: 多臓器不全）
 - **Grade V**: 患者の死亡
 """
 
-# --- 変数初期化 ---
+# --- セッション状態の初期化 ---
 if 'init_done' not in st.session_state:
     st.session_state['init_done'] = True
     defaults = {
+        "facility_name": "選択してください", "patient_id": "",
         "vital_detail": "N/A", "bladder_tumor_tx": "N/A", "op_date": None, "op_admission_date": None, "op_discharge_date": None,
         "op_type": "未選択", "approach": "未選択", "op_completed": "未選択", "op_incomplete_detail": "N/A",
         "op_time": 0, "bleeding": 0, "eau_grade": "未選択", "eau_detail": "N/A", "ln_dissection": "未選択",
@@ -86,17 +105,18 @@ if 'init_done' not in st.session_state:
         "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
         "p_size": 0.0, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
         "p_multiplicity": "未選択", "p_lvi": "未選択", "r0_status": "未選択",
-        "trg_grade": "未選択", "no_op_reason": "未選択", "cd_grade": "未選択", "cd_detail": "N/A"
+        "trg_grade": "未選択", "no_op_reason": "未選択", "cd_grade": "未選択", "cd_detail": "N/A",
+        "adj_plan": "選択してください", "adj_other_detail": ""
     }
     for k, v in defaults.items():
         if k not in st.session_state: st.session_state[k] = v
 
-def send_email(report_content, pid):
+def send_email(report_content, pid, facility):
     try:
         mail_user = st.secrets["email"]["user"]; mail_pass = st.secrets["email"]["pass"]
         to_addrs = ["urosec@kmu.ac.jp", "yoshida.tks@kmu.ac.jp"]
         msg = MIMEMultipart(); msg['From'] = mail_user; msg['To'] = ", ".join(to_addrs)
-        msg['Subject'] = f"【JUOG CRF】周術期報告（ID: {pid}）"
+        msg['Subject'] = f"【JUOG CRF】周術期報告（{facility} / ID: {pid}）"
         msg.attach(MIMEText(report_content, 'plain'))
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(mail_user, mail_pass); server.send_message(msg); server.quit()
@@ -105,7 +125,20 @@ def send_email(report_content, pid):
 
 st.title("JUOG UTUC_Conlidative 周術期CRF")
 
-patient_id = st.text_input("研究対象者識別コード*")
+# --- スタイリッシュな共通ヘッダー ---
+st.markdown('<div class="top-info-bar">', unsafe_allow_html=True)
+col_h1, col_h2 = st.columns(2)
+with col_h1:
+    st.session_state.facility_name = st.selectbox("施設名*", [
+        "選択してください", "関西医科大学附属病院", "関西医科大学総合医療センター", "関西医科大学香里病院", 
+        "星ヶ丘医療センター", "松下記念病院", "河内総合病院", "市立ひらかた病院", "蒼龍会 井上病院", "その他"
+    ], index=([
+        "選択してください", "関西医科大学附属病院", "関西医科大学総合医療センター", "関西医科大学香里病院", 
+        "星ヶ丘医療センター", "松下記念病院", "河内総合病院", "市立ひらかた病院", "蒼龍会 井上病院", "その他"
+    ].index(st.session_state.facility_name)))
+with col_h2:
+    st.session_state.patient_id = st.text_input("研究対象者識別コード*", value=st.session_state.patient_id, placeholder="例: KMU-001")
+st.markdown('</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["📊 術前・登録時", "🔪 手術記録", "🔬 病理結果", "📋 30日目評価"])
 
@@ -153,30 +186,25 @@ with tab1:
 with tab2:
     st.markdown('<div class="juog-header">4. 手術実施状況</div>', unsafe_allow_html=True)
     op_performed = st.radio("手術の実施*", ["実施した", "実施しなかった"], index=None, horizontal=True)
-    
     if op_performed == "実施した":
         oc1, oc2 = st.columns(2)
         with oc1:
             st.session_state.op_admission_date = st.date_input("入院日*", value=None)
             st.session_state.op_date = st.date_input("手術実施日*", value=None)
             st.session_state.op_discharge_date = st.date_input("退院日", value=None)
-            
             if st.session_state.op_date and last_evp_date and st.session_state.op_date <= last_evp_date:
                 st.error("手術日は最終EVP投与日より後の日付を入力してください。")
-            
             st.session_state.op_type = st.selectbox("術式*", ["選択してください", "根治的腎尿管全摘除術", "尿管部分切除術"], index=0)
             st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=None, horizontal=True)
             st.session_state.op_completed = st.radio("予定手術が完遂できたか*", ["はい", "いいえ"], index=None, horizontal=True)
             if st.session_state.op_completed == "いいえ":
                 st.session_state.op_incomplete_detail = st.text_area("完遂できなかった理由・詳細*")
-            st.session_state.op_time = st.number_input("手術時間 (分)*", value=0, step=1, max_value=1500)
-            st.session_state.bleeding = st.number_input("出血量 (mL)*", value=0, step=1, max_value=20000)
+            st.session_state.op_time = st.number_input("手術時間 (分)*", value=0, step=1)
+            st.session_state.bleeding = st.number_input("出血量 (mL)*", value=0, step=1)
         with oc2:
             st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0, help=HELP_EAUIAIC)
             if st.session_state.eau_grade not in ["選択してください", "Grade 0"]:
                 st.session_state.eau_detail = st.text_area("術中合併症の詳細内容*")
-            else: st.session_state.eau_detail = "なし"
-
             st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=None, horizontal=True)
             if st.session_state.ln_dissection == "実施した":
                 st.session_state.ln_range = st.multiselect("リンパ節郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"])
@@ -195,7 +223,7 @@ with tab3:
             if p_sub_presence == "あり":
                 st.session_state.p_subtype_type = st.multiselect("亜型の種類*", ["Nest型", "Micropapillary型", "Plasmacytoid型", "Sarcomatoid変化", "Lymphoepithelioma-like型", "Clear cell型", "Lipid-rich型", "Trophoblastic分化", "Glandular分化", "Squamous分化"])
             st.session_state.p_morphology = st.selectbox("形態*", ["選択してください", "乳頭状(Papillary)", "非乳頭状(Non-papillary)", "結節状(Nodular)", "浸潤状(Infiltrative)", "平坦状(Flat)", "その他"], index=0)
-            st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=0.0, step=0.1, max_value=300.0)
+            st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=0.0, step=0.1)
             st.session_state.p_location = st.multiselect("部位*", ["上腎杯", "中腎杯", "下腎杯", "腎盂", "UPJ", "上部尿管", "中部尿管", "下部尿管", "VUJ"])
         with pc2:
             st.session_state.ypt = st.selectbox("ypT分類*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4"], index=0)
@@ -206,10 +234,10 @@ with tab3:
             st.session_state.p_lvi = st.radio("LVI（脈管侵襲）*", ["なし", "あり"], index=None, horizontal=True)
             st.session_state.r0_status = st.radio("R0切除*", ["陰性", "陽性"], index=None, horizontal=True)
             st.session_state.trg_grade = st.radio("病理学的治療効果（TRG分類）*", ["TRG 1： Complete Response", "TRG 2： Strong Response", "TRG 3： Weak and No Response"], index=None, help=HELP_TRG)
-    else: st.write("手術未実施のため、入力項目はありません。")
+    else: st.write("手術未実施のため入力項目はありません。")
 
 with tab4:
-    st.markdown('<div class="juog-header">6. 術後30日目（フォローアップ）評価</div>', unsafe_allow_html=True)
+    st.markdown('<div class="juog-header">6. 術後30日目評価</div>', unsafe_allow_html=True)
     if op_performed == "実施した" and st.session_state.op_date:
         t30 = st.session_state.op_date + timedelta(days=30)
         st.info(f"術後30日目目安: {t30}"); (st.warning(f"まだ30日に達していません。") if date.today() < t30 else None)
@@ -217,33 +245,30 @@ with tab4:
     with sc1:
         if op_performed == "実施した":
             st.session_state.cd_grade = st.selectbox("術後合併症 (Clavien-Dindo分類)*", ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade IIIa", "Grade IIIb", "Grade IVa", "Grade IVb", "Grade V"], index=0, help=HELP_CD)
-            # 指示：Grade 0以外の時のみ詳細枠を表示
             if st.session_state.cd_grade not in ["選択してください", "Grade 0"]:
                 st.session_state.cd_detail = st.text_area("CD分類 詳細*")
-            else: st.session_state.cd_detail = "なし"
         else: st.session_state.cd_grade = "N/A"
     with sc2:
-        adj_plan = st.selectbox("今後の治療予定（または実施中）*", 
-                                ["選択してください", 
-                                 "無治療（経過観察）", 
-                                 "EVP継続投与", 
-                                 "ペムブロリズマブ単剤維持療法", 
-                                 "ニボルマブ単剤療法（術後補助療法として）", 
-                                 "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", 
-                                 "その他（放射線療法、治験参加、転移巣切除など）"], index=0)
-        # 指示：その他選択時に詳細入力
-        if adj_plan == "その他（放射線療法、治験参加、転移巣切除など）":
-            adj_other_detail = st.text_input("治療内容の詳細*")
-        else: adj_other_detail = ""
-
+        st.session_state.adj_plan = st.selectbox("今後の治療予定（または実施中）*", [
+            "選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", "ニボルマブ単剤療法（術後補助療法として）", 
+            "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", "その他（放射線療法、治験参加、転移巣切除など）"
+        ], index=(["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロリズマブ単剤維持療法", "ニボルマブ単剤療法（術後補助療法として）", 
+            "プラチナ製剤併用化学療法（術後補助化学療法として：GC/GCarbo等）", "その他（放射線療法、治験参加、転移巣切除など）"].index(st.session_state.adj_plan)))
+        
+        if st.session_state.adj_plan == "その他（放射線療法、治験参加、転移巣切除など）":
+            # 枠を大きく表示
+            st.session_state.adj_other_detail = st.text_area("治療内容の詳細*", height=200)
+        
         adj_date = st.date_input("次回治療開始予定日または実施日*", value=None)
         st.session_state.status_alive = st.radio("生存状況（術後30日時点）*", ["生存", "死亡"], index=None, horizontal=True)
 
     st.divider()
     if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
-        if not patient_id: st.error("IDを入力してください")
-        elif st.session_state.status_alive is None: st.error("生存状況を選択してください")
+        if not st.session_state.patient_id or st.session_state.facility_name == "選択してください":
+            st.error("施設名と識別コードを入力してください")
+        elif st.session_state.status_alive is None:
+            st.error("生存状況を選択してください")
         else:
-            rep = f"ID: {patient_id}\n入院: {st.session_state.op_admission_date} / 手術: {st.session_state.op_date} / 退院: {st.session_state.op_discharge_date}\n生存: {st.session_state.status_alive}\nCD分類: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}\nEAU詳細: {st.session_state.eau_detail}\n今後の予定: {adj_plan} {adj_other_detail}\n次回予定日: {adj_date}"
-            if send_email(rep, patient_id): st.success("送信完了しました！"); st.balloons()
+            rep = f"施設: {st.session_state.facility_name}\nID: {st.session_state.patient_id}\n生存: {st.session_state.status_alive}\nCD: {st.session_state.cd_grade}\nTRG: {st.session_state.trg_grade}\n予定: {st.session_state.adj_plan}\n詳細: {st.session_state.adj_other_detail}"
+            if send_email(rep, st.session_state.patient_id, st.session_state.facility_name): st.success("送信完了しました！"); st.balloons()
             else: st.error("送信失敗しました。")
