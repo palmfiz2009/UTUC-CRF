@@ -97,7 +97,8 @@ with tab1:
     with c1:
         last_evp_date = st.date_input("最終EVP投与日", value=None)
         pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ["選択してください", "なし", "Grade 1 軽症", "Grade 2 中等症", "Grade 3 重症", "Grade 4 生命を脅かす", "Grade 5 死亡"], index=0)
-        st.caption("[JCOG版 CTCAE v5.0 日本語訳（外部リンク）](https://www.jcog.jp/doctor/tool/ctcaev5.html)")
+        # 指示：最新のPDFリンクへ変更
+        st.caption("[JCOG版 CTCAE v6.0 日本語訳（外部リンク）](https://jcog.jp/assets/CTCAEv6J_20260301_v28_0.pdf)")
         
         if pre_ae_grade not in ["選択してください", "なし"]:
             ae_detail = st.text_input("CTCAE（詳細記載）")
