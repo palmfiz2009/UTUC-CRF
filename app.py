@@ -98,7 +98,7 @@ Gradingの原則：
 - **Grade V**：患者の死亡。
 """
 
-# --- セッション状態初期化 (血液検査項目を追加してAttributeErrorを解消) ---
+# --- セッション状態初期化 (生存・死亡詳細項目を追加) ---
 if 'init_done' not in st.session_state:
     st.session_state['init_done'] = True
     defaults = {
@@ -106,18 +106,19 @@ if 'init_done' not in st.session_state:
         "last_evp_date": None, "pre_ae_grade": "選択してください", "ae_detail": "なし",
         "vital_abnormality": None, "vital_detail": "N/A", 
         "cysto_find": None, "bladder_tumor_tx": "N/A", 
-        "wbc_90": None, "hb_90": None, "plt_90": None, "ast_90": None, "alt_90": None,
-        "ldh_90": None, "alb_90": None, "cre_90": None, "egfr_90": None, "crp_90": None,
-        "neutro_90": None, "lympho_90": None, "mono_90": None, "eosino_90": None, "baso_90": None,
+        "wbc_reg": None, "hb_reg": None, "plt_reg": None, "ast_reg": None, "alt_reg": None,
+        "ldh_reg": None, "alb_reg": None, "cre_reg": None, "egfr_reg": None, "crp_reg": None,
+        "neutro_reg": None, "lympho_reg": None, "mono_reg": None, "eosino_reg": None, "baso_reg": None,
         "op_performed": None, "op_date": None, "op_admission_date": None, "op_discharge_date": None,
-        "op_type": "未選択", "approach": "未選択", "op_completed": "未選択", "op_incomplete_detail": "N/A",
-        "op_time": None, "bleeding": None, "eau_grade": "未選択", "eau_detail": "N/A", "ln_dissection": "未選択",
-        "ln_range": [], "p_histology": "未選択", "p_histology_other": "N/A",
-        "p_subtype_presence": "未選択", "p_subtype_type": [], "p_morphology": "未選択",
-        "p_size": None, "p_location": [], "ypt": "未選択", "ypn": "未選択", "ypn_pos_sites": [],
-        "p_multiplicity": "未選択", "p_lvi": "未選択", "r0_status": "未選択", "p_eval_failed_reason": "",
-        "trg_grade": "未選択", "no_op_reason": "選択してください", "no_op_reason_other": "", "cd_grade": "未選択", "cd_detail": "N/A",
-        "adj_plan": "選択してください", "adj_other_detail": "", "adj_date": None, "status_alive": None,
+        "op_type": "選択してください", "approach": None, "op_completed": None, "op_incomplete_detail": "N/A",
+        "op_time": None, "bleeding": None, "eau_grade": "選択してください", "eau_detail": "N/A", "ln_dissection": None,
+        "ln_range": [], "p_histology": "選択してください", "p_histology_other": "N/A",
+        "p_subtype_presence": None, "p_subtype_type": [], "p_morphology": "選択してください",
+        "p_size": None, "p_location": [], "ypt": "選択してください", "ypn": "選択してください", "ypn_pos_sites": [],
+        "p_multiplicity": None, "p_lvi": None, "r0_status": None, "p_eval_failed_reason": "",
+        "trg_grade": None, "no_op_reason": "選択してください", "no_op_reason_other": "",
+        "cd_grade": "選択してください", "cd_detail": "N/A", "adj_plan": "選択してください", "adj_other_detail": "", "adj_date": None,
+        "status_alive": None, "final_visit_date_30": None, "death_date_30": None, "death_cause_30": "選択してください",
         "needs_confirm": False, "do_send": False
     }
     for k, v in defaults.items():
@@ -170,25 +171,25 @@ with tab1:
     st.markdown('<div class="juog-header">2. 術前血液検査（一か月以内）</div>', unsafe_allow_html=True)
     bc1, bc2 = st.columns(2)
     with bc1:
-        wbc = st.number_input("WBC (/μL)*", value=st.session_state.wbc_90, step=1.0)
-        hb = st.number_input("Hb (g/dL)*", value=st.session_state.hb_90, step=0.1)
-        plt = st.number_input("PLT (x10^4/μL)*", value=st.session_state.plt_90, step=1.0)
-        ast = st.number_input("AST (U/L)*", value=st.session_state.ast_90, step=1.0)
-        alt = st.number_input("ALT (U/L)*", value=st.session_state.alt_90, step=1.0)
+        wbc = st.number_input("WBC (/μL)*", value=st.session_state.wbc_reg, step=1.0)
+        hb = st.number_input("Hb (g/dL)*", value=st.session_state.hb_reg, step=0.1)
+        plt = st.number_input("PLT (x10^4/μL)*", value=st.session_state.plt_reg, step=1.0)
+        ast = st.number_input("AST (U/L)*", value=st.session_state.ast_reg, step=1.0)
+        alt = st.number_input("ALT (U/L)*", value=st.session_state.alt_reg, step=1.0)
     with bc2:
-        ldh = st.number_input("LDH (U/L)*", value=st.session_state.ldh_90, step=1.0)
-        alb = st.number_input("Alb (g/dL)*", value=st.session_state.alb_90, step=0.1)
-        cre = st.number_input("Cre (mg/dL)*", value=st.session_state.cre_90, step=0.01)
-        egfr = st.number_input("eGFR (mL/min/1.73m²)*", value=st.session_state.egfr_90, step=0.1)
-        crp = st.number_input("CRP (mg/dL)*", value=st.session_state.crp_90, step=0.01)
+        ldh = st.number_input("LDH (U/L)*", value=st.session_state.ldh_reg, step=1.0)
+        alb = st.number_input("Alb (g/dL)*", value=st.session_state.alb_reg, step=0.1)
+        cre = st.number_input("Cre (mg/dL)*", value=st.session_state.cre_reg, step=0.01)
+        egfr = st.number_input("eGFR (mL/min/1.73m²)*", value=st.session_state.egfr_reg, step=0.1)
+        crp = st.number_input("CRP (mg/dL)*", value=st.session_state.crp_reg, step=0.01)
 
     st.subheader("白血球分画 (%)")
     f1, f2, f3, f4, f5 = st.columns(5)
-    neutro = f1.number_input("Neutro*", value=st.session_state.neutro_90, step=0.1)
-    lympho = f2.number_input("Lympho*", value=st.session_state.lympho_90, step=0.1)
-    mono = f3.number_input("Mono*", value=st.session_state.mono_90, step=0.1)
-    eosino = f4.number_input("Eosino*", value=st.session_state.eosino_90, step=0.1)
-    baso = f5.number_input("Baso*", value=st.session_state.baso_90, step=0.1)
+    neutro = f1.number_input("Neutro*", value=st.session_state.neutro_reg, step=0.1)
+    lympho = f2.number_input("Lympho*", value=st.session_state.lympho_reg, step=0.1)
+    mono = f3.number_input("Mono*", value=st.session_state.mono_reg, step=0.1)
+    eosino = f4.number_input("Eosino*", value=st.session_state.eosino_reg, step=0.1)
+    baso = f5.number_input("Baso*", value=st.session_state.baso_reg, step=0.1)
 
 with tab2:
     st.markdown('<div class="juog-header">4. 手術実施状況</div>', unsafe_allow_html=True)
@@ -198,13 +199,18 @@ with tab2:
         with oc1:
             st.session_state.op_admission_date = st.date_input("入院日*", value=st.session_state.op_admission_date)
             st.session_state.op_date = st.date_input("手術実施日*", value=st.session_state.op_date)
-            st.session_state.op_type = st.selectbox("術式*", ["選択してください", "根治的腎尿管全摘除術", "尿管部分切除術"], index=0)
-            st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=None, horizontal=True)
+            st.session_state.op_discharge_date = st.date_input("退院日（または退院予定日）", value=st.session_state.op_discharge_date)
+            op_types = ["選択してください", "根治的腎尿管全摘除術", "尿管部分切除術"]
+            idx_op = op_types.index(st.session_state.op_type) if st.session_state.op_type in op_types else 0
+            st.session_state.op_type = st.selectbox("術式*", op_types, index=idx_op)
+            st.session_state.approach = st.radio("アプローチ*", ["開腹", "腹腔鏡", "ロボット支援"], index=(0 if st.session_state.approach=="開腹" else 1 if st.session_state.approach=="腹腔鏡" else 2 if st.session_state.approach=="ロボット支援" else None), horizontal=True)
             st.session_state.op_time = st.number_input("手術時間 (分)*", value=st.session_state.op_time, step=1)
             st.session_state.bleeding = st.number_input("出血量 (mL)*", value=st.session_state.bleeding, step=1)
         with oc2:
-            st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"], index=0, help=HELP_EAUIAIC)
-            st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=None, horizontal=True)
+            eau_opts = ["選択してください", "Grade 0", "Grade 1", "Grade 2", "Grade 3", "Grade 4A", "Grade 4B", "Grade 5A", "Grade 5B"]
+            idx_eau = eau_opts.index(st.session_state.eau_grade) if st.session_state.eau_grade in eau_opts else 0
+            st.session_state.eau_grade = st.selectbox("術中合併症（EAUiaiC）*", eau_opts, index=idx_eau, help=HELP_EAUIAIC)
+            st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=(0 if st.session_state.ln_dissection=="実施した" else 1 if st.session_state.ln_dissection=="実施しなかった" else None), horizontal=True)
     elif st.session_state.op_performed == "実施しなかった":
         st.session_state.no_op_reason = st.selectbox("実施しなかった理由*", ["選択してください", "病勢進行", "G3以上のEVP関連有害事象", "同意撤回", "その他"])
 
@@ -213,11 +219,17 @@ with tab3:
         st.markdown('<div class="juog-header">5. 術後病理診断</div>', unsafe_allow_html=True)
         pc1, pc2 = st.columns(2)
         with pc1:
-            st.session_state.p_histology = st.selectbox("組織型*", ["選択してください", "Urothelial carcinoma", "Other"], index=0)
+            h_opts = ["選択してください", "Urothelial carcinoma", "Other"]
+            idx_h = h_opts.index(st.session_state.p_histology) if st.session_state.p_histology in h_opts else 0
+            st.session_state.p_histology = st.selectbox("組織型*", h_opts, index=idx_h)
             st.session_state.p_size = st.number_input("大きさ (最大径 mm)*", value=st.session_state.p_size, step=0.1)
         with pc2:
-            st.session_state.ypt = st.selectbox("ypT分類*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4"], index=0)
-            st.session_state.ypn = st.selectbox("ypN分類*", ["選択してください", "ypN0", "ypN1", "ypN2"], index=0)
+            ypt_opts = ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4"]
+            idx_ypt = ypt_opts.index(st.session_state.ypt) if st.session_state.ypt in ypt_opts else 0
+            st.session_state.ypt = st.selectbox("ypT分類*", ypt_opts, index=idx_ypt)
+            ypn_opts = ["選択してください", "ypN0", "ypN1", "ypN2"]
+            idx_ypn = ypn_opts.index(st.session_state.ypn) if st.session_state.ypn in ypn_opts else 0
+            st.session_state.ypn = st.selectbox("ypN分類*", ypn_opts, index=idx_ypn)
             st.session_state.trg_grade = st.radio("TRG分類*", ["TRG 1", "TRG 2", "TRG 3", "評価不能"], index=None, help=HELP_TRG)
 
 with tab4:
@@ -225,9 +237,30 @@ with tab4:
     sc1, sc2 = st.columns(2)
     with sc1:
         if st.session_state.op_performed == "実施した":
-            st.session_state.cd_grade = st.selectbox("術後合併症 (CD分類)*", ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade III", "Grade IV", "Grade V"], index=0, help=HELP_CD)
+            cd_opts = ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade IIIa", "Grade IIIb", "Grade IVa", "Grade IVb", "Grade V"]
+            idx_cd = cd_opts.index(st.session_state.cd_grade) if st.session_state.cd_grade in cd_opts else 0
+            st.session_state.cd_grade = st.selectbox("術後合併症 (CD分類)*", cd_opts, index=idx_cd, help=HELP_CD)
+            if st.session_state.cd_grade not in ["選択してください", "Grade 0"]:
+                st.session_state.cd_detail = st.text_area("CD分類詳細*", value=st.session_state.cd_detail)
+        else: st.session_state.cd_grade = "N/A"
+    
     with sc2:
-        st.session_state.status_alive = st.radio("生存状況（術後30日時点）*", ["生存", "死亡"], index=None, horizontal=True)
+        # 生存状況 (90日CRF形式へアップデート)
+        st.session_state.status_alive = st.radio("生存状況 (術後30日時点)*", ["生存", "死亡"], index=(0 if st.session_state.status_alive=="生存" else 1 if st.session_state.status_alive=="死亡" else None), horizontal=True)
+        
+        if st.session_state.status_alive == "生存":
+            st.session_state.final_visit_date_30 = st.date_input("最終生存確認日(最終来院日)*", value=st.session_state.final_visit_date_30)
+        
+        if st.session_state.status_alive == "死亡":
+            st.session_state.death_date_30 = st.date_input("死亡日*", value=st.session_state.death_date_30)
+            death_causes = ["選択してください", "癌死 (原疾患による)", "治療関連死 (合併症・有害事象)", "他病死", "不明"]
+            idx_dc = death_causes.index(st.session_state.death_cause_30) if st.session_state.death_cause_30 in death_causes else 0
+            st.session_state.death_cause_30 = st.selectbox("死因*", death_causes, index=idx_dc)
+
+    st.markdown("---")
+    st.subheader("今後の予定")
+    st.session_state.adj_plan = st.selectbox("今後の治療予定*", ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロ単剤維持", "その他"])
+    st.session_state.adj_date = st.date_input("次回治療開始予定日*", value=st.session_state.adj_date)
 
     st.divider()
 
@@ -235,15 +268,44 @@ with tab4:
 
     if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
         h_errors = []
-        if st.session_state.facility_name == "選択してください": h_errors.append("・施設名")
-        if not st.session_state.patient_id: h_errors.append("・識別コード")
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", st.session_state.reporter_email): h_errors.append("・有効なメールアドレス")
-        if st.session_state.status_alive is None: h_errors.append("・生存状況")
+        d = st.session_state
+        if d.facility_name == "選択してください": h_errors.append("・施設名")
+        if not d.patient_id: h_errors.append("・識別コード")
+        if not d.reporter_email or not re.match(r"[^@]+@[^@]+\.[^@]+", d.reporter_email): h_errors.append("・有効な報告者メールアドレス")
+        
+        # 生存詳細の必須チェック
+        if d.status_alive is None: 
+            h_errors.append("・生存状況")
+        elif d.status_alive == "生存":
+            if not d.final_visit_date_30: h_errors.append("・最終生存確認日")
+            if d.cd_grade == "Grade V": h_errors.append("・生存なのにCD分類がGrade V（死亡）になっています")
+        elif d.status_alive == "死亡":
+            if d.cd_grade != "Grade V": h_errors.append("・死亡なのにCD分類がGrade V以外になっています")
+            if not d.death_date_30: h_errors.append("・死亡日")
+            if d.death_cause_30 == "選択してください": h_errors.append("・死因")
 
         if h_errors:
-            st.error("【必須入力エラー】以下の項目を確認してください：\n" + "\n".join(h_errors))
+            st.error("【入力エラー】以下の項目を正しく入力してください：\n" + "\n".join(h_errors))
         else:
-            rep = f"【JUOG 周術期報告】\n施設: {st.session_state.facility_name}\nID: {st.session_state.patient_id}\n生存: {st.session_state.status_alive}\n主要採血: WBC:{f_num(wbc)}, Hb:{f_num(hb)}, Cre:{f_num(cre)}"
-            if send_email(rep, st.session_state.patient_id, st.session_state.facility_name, st.session_state.reporter_email):
-                st.success(f"送信完了しました。{st.session_state.reporter_email} 宛に控えを送付しました。")
+            # レポート本文
+            rep = f"""【JUOG 周術期報告】
+施設: {d.facility_name} / ID: {d.patient_id}
+報告者控え: {d.reporter_email}
+
+【生存状況 (30日目)】
+状況: {d.status_alive}
+"""
+            if d.status_alive == "生存":
+                rep += f"最終生存確認日: {d.final_visit_date_30}\n"
+            else:
+                rep += f"死亡日: {d.death_date_30} / 死因: {d.death_cause_30}\n"
+
+            rep += f"""
+【合併症・他】
+CD分類: {d.cd_grade} (詳細: {d.cd_detail})
+主要採血: WBC:{f_num(wbc)}, Hb:{f_num(hb)}, Cre:{f_num(cre)}
+今後の予定: {d.adj_plan} (開始日: {d.adj_date})
+"""
+            if send_email(rep, d.patient_id, d.facility_name, d.reporter_email):
+                st.success(f"送信完了しました。{d.reporter_email} 宛に控えを送付しました。")
                 st.balloons()
