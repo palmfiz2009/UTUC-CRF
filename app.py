@@ -98,7 +98,7 @@ Gradingの原則：
 - **Grade V**：患者の死亡。
 """
 
-# --- セッション状態初期化 (生存・死亡詳細項目を追加) ---
+# --- セッション状態初期化 ---
 if 'init_done' not in st.session_state:
     st.session_state['init_done'] = True
     defaults = {
@@ -230,10 +230,12 @@ with tab3:
             ypn_opts = ["選択してください", "ypN0", "ypN1", "ypN2"]
             idx_ypn = ypn_opts.index(st.session_state.ypn) if st.session_state.ypn in ypn_opts else 0
             st.session_state.ypn = st.selectbox("ypN分類*", ypn_opts, index=idx_ypn)
-            st.session_state.trg_grade = st.radio("TRG分類*", ["TRG 1", "TRG 2", "TRG 3", "評価不能"], index=None, help=HELP_TRG)
+            st.session_state.trg_grade = st.radio("TRG分類*", ["TRG 1", "TRG 2", "TRG 3", "評価不能"], index=(0 if st.session_state.trg_grade=="TRG 1" else 1 if st.session_state.trg_grade=="TRG 2" else 2 if st.session_state.trg_grade=="TRG 3" else 3 if st.session_state.trg_grade=="評価不能" else None), help=HELP_TRG)
 
 with tab4:
     st.markdown('<div class="juog-header">6. 術後30日目評価</div>', unsafe_allow_html=True)
+    
+    # 1段目: 合併症と生存状況
     sc1, sc2 = st.columns(2)
     with sc1:
         if st.session_state.op_performed == "実施した":
@@ -245,22 +247,29 @@ with tab4:
         else: st.session_state.cd_grade = "N/A"
     
     with sc2:
-        # 生存状況 (90日CRF形式へアップデート)
         st.session_state.status_alive = st.radio("生存状況 (術後30日時点)*", ["生存", "死亡"], index=(0 if st.session_state.status_alive=="生存" else 1 if st.session_state.status_alive=="死亡" else None), horizontal=True)
-        
+
+    # 2段目: 生存/死亡詳細と、生存時のみ治療予定を横並びで表示
+    sd1, sd2 = st.columns(2)
+    with sd1:
         if st.session_state.status_alive == "生存":
             st.session_state.final_visit_date_30 = st.date_input("最終生存確認日(最終来院日)*", value=st.session_state.final_visit_date_30)
-        
-        if st.session_state.status_alive == "死亡":
+        elif st.session_state.status_alive == "死亡":
             st.session_state.death_date_30 = st.date_input("死亡日*", value=st.session_state.death_date_30)
             death_causes = ["選択してください", "癌死 (原疾患による)", "治療関連死 (合併症・有害事象)", "他病死", "不明"]
             idx_dc = death_causes.index(st.session_state.death_cause_30) if st.session_state.death_cause_30 in death_causes else 0
             st.session_state.death_cause_30 = st.selectbox("死因*", death_causes, index=idx_dc)
 
-    st.markdown("---")
-    st.subheader("今後の予定")
-    st.session_state.adj_plan = st.selectbox("今後の治療予定*", ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロ単剤維持", "その他"])
-    st.session_state.adj_date = st.date_input("次回治療開始予定日*", value=st.session_state.adj_date)
+    with sd2:
+        # 生存時のみ表示される設定
+        if st.session_state.status_alive == "生存":
+            st.markdown("**【今後の予定】**")
+            adj_plans = ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロ単剤維持", "その他"]
+            idx_ap = adj_plans.index(st.session_state.adj_plan) if st.session_state.adj_plan in adj_plans else 0
+            st.session_state.adj_plan = st.selectbox("今後の治療予定*", adj_plans, index=idx_ap)
+            if st.session_state.adj_plan == "その他":
+                st.session_state.adj_other_detail = st.text_area("詳細内容*", value=st.session_state.adj_other_detail)
+            st.session_state.adj_date = st.date_input("次回治療開始予定日*", value=st.session_state.adj_date)
 
     st.divider()
 
@@ -279,6 +288,7 @@ with tab4:
         elif d.status_alive == "生存":
             if not d.final_visit_date_30: h_errors.append("・最終生存確認日")
             if d.cd_grade == "Grade V": h_errors.append("・生存なのにCD分類がGrade V（死亡）になっています")
+            if d.adj_plan == "選択してください": h_errors.append("・今後の治療予定を選択してください")
         elif d.status_alive == "死亡":
             if d.cd_grade != "Grade V": h_errors.append("・死亡なのにCD分類がGrade V以外になっています")
             if not d.death_date_30: h_errors.append("・死亡日")
@@ -287,7 +297,6 @@ with tab4:
         if h_errors:
             st.error("【入力エラー】以下の項目を正しく入力してください：\n" + "\n".join(h_errors))
         else:
-            # レポート本文
             rep = f"""【JUOG 周術期報告】
 施設: {d.facility_name} / ID: {d.patient_id}
 報告者控え: {d.reporter_email}
@@ -296,7 +305,7 @@ with tab4:
 状況: {d.status_alive}
 """
             if d.status_alive == "生存":
-                rep += f"最終生存確認日: {d.final_visit_date_30}\n"
+                rep += f"最終生存確認日: {d.final_visit_date_30}\n今後の予定: {d.adj_plan} (開始日: {d.adj_date})\n"
             else:
                 rep += f"死亡日: {d.death_date_30} / 死因: {d.death_cause_30}\n"
 
@@ -304,7 +313,6 @@ with tab4:
 【合併症・他】
 CD分類: {d.cd_grade} (詳細: {d.cd_detail})
 主要採血: WBC:{f_num(wbc)}, Hb:{f_num(hb)}, Cre:{f_num(cre)}
-今後の予定: {d.adj_plan} (開始日: {d.adj_date})
 """
             if send_email(rep, d.patient_id, d.facility_name, d.reporter_email):
                 st.success(f"送信完了しました。{d.reporter_email} 宛に控えを送付しました。")
