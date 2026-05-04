@@ -90,8 +90,8 @@ HELP_CD = """【Clavien-Dindo分類 (術後30日評価)】
 * Grade V：患者の死亡"""
 
 # --- セッション状態初期化 ---
-if 'init_peri_vfinal_sync_v3' not in st.session_state:
-    st.session_state['init_peri_vfinal_sync_v3'] = True
+if 'init_peri_vfinal_sync_v4' not in st.session_state:
+    st.session_state['init_peri_vfinal_sync_v4'] = True
     defaults = {
         "facility_name": "選択してください", "patient_id": "", "reporter_email": "",
         "last_evp_date": None, "pre_ae_grade": "選択してください", "ae_detail": "",
@@ -101,7 +101,7 @@ if 'init_peri_vfinal_sync_v3' not in st.session_state:
         "neutro_reg": None, "lympho_reg": None, "mono_reg": None, "eosino_reg": None, "baso_reg": None,
         "op_performed": None, "op_admission_date": None, "op_date": None, "op_discharge_date": None,
         "op_type": "選択してください", "approach": None, "op_completed": None, "op_incomplete_detail": "",
-        "no_op_reason": "選択してください", # ここを追加してクラッシュを解消！
+        "no_op_reason": "選択してください",
         "op_time": None, "bleeding": None, "eau_grade": "選択してください", "eau_detail": "",
         "ln_dissection": None, "ln_range": [],
         "p_histology": "選択してください", "p_histology_other": "", "p_subtype_presence": None, "p_subtype_type": [],
@@ -153,7 +153,6 @@ with tab1:
         st.session_state.pre_ae_grade = st.selectbox("術前EVP関連AE: CTCAE grade*", ae_opts, index=get_idx(ae_opts, st.session_state.pre_ae_grade))
         if st.session_state.pre_ae_grade not in ["選択してください", "なし"]:
             st.session_state.ae_detail = st.text_input("CTCAE詳細*", value=st.session_state.ae_detail)
-        # CTCAEリンクの統一配置
         st.markdown("<div style='text-align: right;'><small>参照： <a href='https://jcog.jp/assets/CTCAEv6J_20260301_v28_0.pdf' target='_blank'>CTCAE v6.0 日本語訳 (JCOG版)</a></small></div>", unsafe_allow_html=True)
 
     with c2:
@@ -208,7 +207,6 @@ with tab2:
                 st.session_state.eau_detail = st.text_area("術中合併症詳細*", value=st.session_state.eau_detail)
             st.session_state.ln_dissection = st.radio("リンパ節郭清*", ["実施した", "実施しなかった"], index=(0 if st.session_state.ln_dissection=="実施した" else 1 if st.session_state.ln_dissection=="実施しなかった" else None), horizontal=True)
             if st.session_state.ln_dissection == "実施した":
-                # 傍大動脈リンパ節を追加
                 st.session_state.ln_range = st.multiselect("郭清範囲*", ["腎門部", "下大静脈周囲", "大動脈周囲", "傍大動脈リンパ節", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"], default=st.session_state.ln_range)
     elif st.session_state.op_performed == "実施しなかった":
         noop_opts = ["選択してください", "病勢進行", "G3以上のEVP関連有害事象の発生", "同意撤回", "その他"]
@@ -234,7 +232,6 @@ with tab3:
             st.session_state.ypt = st.selectbox("ypT*", ["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4", "評価不能"], index=get_idx(["選択してください", "ypT0", "ypTa", "ypTis", "ypT1", "ypT2", "ypT3", "ypT4", "評価不能"], st.session_state.ypt))
             st.session_state.ypn = st.selectbox("ypN*", ["選択してください", "ypN0", "ypN1", "ypN2", "評価不能"], index=get_idx(["選択してください", "ypN0", "ypN1", "ypN2", "評価不能"], st.session_state.ypn))
             if st.session_state.ypn not in ["ypN0", "選択してください", "評価不能"]:
-                # 傍大動脈リンパ節を追加（病理側）
                 st.session_state.ypn_pos_sites = st.multiselect("陽性部位*", ["腎門部", "下大静脈周囲", "大動脈周囲", "傍大動脈リンパ節", "大動脈静脈間", "総腸骨動脈周囲", "外腸骨動脈周囲", "内腸骨動脈周囲", "閉鎖", "その他"], default=st.session_state.ypn_pos_sites)
             st.session_state.p_multiplicity = st.radio("多発性*", ["単発", "多発"], index=(0 if st.session_state.p_multiplicity=="単発" else 1 if st.session_state.p_multiplicity=="多発" else None), horizontal=True)
             st.session_state.p_lvi = st.radio("LVI*", ["なし", "あり", "評価不能"], index=None, horizontal=True)
@@ -270,16 +267,16 @@ with tab4:
             adj_opts = ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロ単剤維持", "ニボルマブ単剤（術後補助療法）", "GC療法（術後補助療法）", "GCarbo療法（術後補助療法）", "放射線治療", "治験・その他薬物療法", "その他"]
             st.session_state.adj_plan = st.selectbox("術後補助療法・今後の治療予定*", adj_opts, index=get_idx(adj_opts, st.session_state.adj_plan))
             
-            # Swimmer Plot 用の日程収集ロジック
+            # Swimmer Plot 用の日程収集ロジック (keyを競合しないように修正！)
             if st.session_state.adj_plan not in ["選択してください", "無治療（経過観察）"]:
                 if st.session_state.adj_plan in ["治験・その他薬物療法", "その他"]:
                     st.session_state.adj_other_30 = st.text_input("治療の詳細*", value=st.session_state.adj_other_30)
                 
                 ax1, ax2 = st.columns(2)
-                st.session_state.adj_start_30 = ax1.date_input(f"{st.session_state.adj_plan} 開始日*", value=st.session_state.adj_start_30, key="adj_start_30")
-                st.session_state.adj_ongoing_30 = ax2.checkbox("現在も継続中", value=st.session_state.adj_ongoing_30, key="adj_ongoing_30")
+                st.session_state.adj_start_30 = ax1.date_input(f"{st.session_state.adj_plan} 開始日*", value=st.session_state.adj_start_30, key="k_adj_start_30")
+                st.session_state.adj_ongoing_30 = ax2.checkbox("現在も継続中", value=st.session_state.adj_ongoing_30, key="k_adj_ongoing_30")
                 if not st.session_state.adj_ongoing_30:
-                    st.session_state.adj_end_30 = ax2.date_input(f"{st.session_state.adj_plan} 終了日*", value=st.session_state.adj_end_30, key="adj_end_30")
+                    st.session_state.adj_end_30 = ax2.date_input(f"{st.session_state.adj_plan} 終了日*", value=st.session_state.adj_end_30, key="k_adj_end_30")
                 else:
                     st.session_state.adj_end_30 = None
             
