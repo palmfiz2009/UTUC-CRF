@@ -90,8 +90,8 @@ HELP_CD = """【Clavien-Dindo分類 (術後30日評価)】
 * Grade V：患者の死亡"""
 
 # --- セッション状態初期化 ---
-if 'init_peri_vfinal_sync_v4' not in st.session_state:
-    st.session_state['init_peri_vfinal_sync_v4'] = True
+if 'init_peri_vfinal_sync_v5' not in st.session_state:
+    st.session_state['init_peri_vfinal_sync_v5'] = True
     defaults = {
         "facility_name": "選択してください", "patient_id": "", "reporter_email": "",
         "last_evp_date": None, "pre_ae_grade": "選択してください", "ae_detail": "",
@@ -264,10 +264,24 @@ with tab4:
             st.session_state.final_visit_date_30 = st.date_input("最終生存確認日*", value=st.session_state.final_visit_date_30)
             st.markdown("---")
             st.markdown("**【今後の予定】**")
-            adj_opts = ["選択してください", "無治療（経過観察）", "EVP継続投与", "ペムブロ単剤維持", "ニボルマブ単剤（術後補助療法）", "GC療法（術後補助療法）", "GCarbo療法（術後補助療法）", "放射線治療", "治験・その他薬物療法", "その他"]
+            
+            # --- 修正点: 90日目・フォローアップCRFと【一言一句完全一致】する選択肢 ---
+            adj_opts = [
+                "選択してください", 
+                "無治療（経過観察）", 
+                "術前からのEVP継続投与", 
+                "術前からのEV単独継続（間欠療法等を含む）", 
+                "術前からのペムブロリズマブ単剤継続", 
+                "ニボルマブ単剤（術後補助療法）", 
+                "GC療法（術後補助療法）", 
+                "GCarbo療法（術後補助療法）", 
+                "放射線治療", 
+                "治験・その他薬物療法", 
+                "その他"
+            ]
             st.session_state.adj_plan = st.selectbox("術後補助療法・今後の治療予定*", adj_opts, index=get_idx(adj_opts, st.session_state.adj_plan))
             
-            # Swimmer Plot 用の日程収集ロジック (keyを競合しないように修正！)
+            # Swimmer Plot 用の日程収集ロジック
             if st.session_state.adj_plan not in ["選択してください", "無治療（経過観察）"]:
                 if st.session_state.adj_plan in ["治験・その他薬物療法", "その他"]:
                     st.session_state.adj_other_30 = st.text_input("治療の詳細*", value=st.session_state.adj_other_30)
@@ -282,7 +296,7 @@ with tab4:
             
         elif st.session_state.status_alive == "死亡":
             st.session_state.death_date_30 = st.date_input("死亡日*", value=st.session_state.death_date_30)
-            dc_opts = ["選択してください", "癌死", "治療関連死", "他病死", "不明"]
+            dc_opts = ["選択してください", "癌死 (原疾患による)", "治療関連死", "他病死", "不明"]
             st.session_state.death_cause_30 = st.selectbox("死因*", dc_opts, index=get_idx(dc_opts, st.session_state.death_cause_30))
 
     st.divider()
@@ -299,7 +313,6 @@ with tab4:
         if d.op_performed is None: h_errors.append("・手術の実施有無")
         if d.op_performed == "実施しなかった" and d.no_op_reason == "選択してください": h_errors.append("・実施しなかった理由")
         
-        # CD分類と補助療法のバリデーション
         if d.op_performed == "実施した":
             if d.cd_grade == "選択してください": h_errors.append("・Clavien-Dindo分類")
             if d.cd_grade not in ["選択してください", "Grade 0", "N/A"]:
