@@ -90,8 +90,8 @@ HELP_CD = """【Clavien-Dindo分類 (術後30日評価)】
 * Grade V：患者の死亡"""
 
 # --- セッション状態初期化 ---
-if 'init_peri_vfinal_sync_v6' not in st.session_state:
-    st.session_state['init_peri_vfinal_sync_v6'] = True
+if 'init_peri_vfinal_sync_v7' not in st.session_state:
+    st.session_state['init_peri_vfinal_sync_v7'] = True
     defaults = {
         "facility_name": "選択してください", "patient_id": "", "reporter_email": "",
         "last_evp_date": None, "pre_ae_grade": "選択してください", "ae_detail": "",
@@ -249,6 +249,12 @@ with tab4:
     # --- 左側（Column 1）: 合併症 ---
     with sc1:
         if st.session_state.op_performed == "実施した":
+            # --- 修正点：手術日を基準とした具体的な30日期間の提示 ---
+            if st.session_state.op_date:
+                min_date_30 = st.session_state.op_date + timedelta(days=1)
+                max_date_30 = st.session_state.op_date + timedelta(days=30)
+                st.info(f"📅 評価対象期間（術後翌日〜30日以内）:\n**{min_date_30.strftime('%Y/%m/%d')} 〜 {max_date_30.strftime('%Y/%m/%d')}**")
+
             cd_opts = ["選択してください", "Grade 0", "Grade I", "Grade II", "Grade IIIa", "Grade IIIb", "Grade IVa", "Grade IVb", "Grade V"]
             st.session_state.cd_grade = st.selectbox("術後合併症 (Clavien-Dindo分類)*", cd_opts, index=get_idx(cd_opts, st.session_state.cd_grade), help=HELP_CD)
             if st.session_state.cd_grade not in ["選択してください", "Grade 0"]:
@@ -281,7 +287,6 @@ with tab4:
             ]
             st.session_state.adj_plan = st.selectbox("術後補助療法・今後の治療予定*", adj_opts, index=get_idx(adj_opts, st.session_state.adj_plan))
             
-            # --- 修正点：30日時点は「開始（予定）日」のみにシンプル化 ---
             if st.session_state.adj_plan not in ["選択してください", "無治療（経過観察）"]:
                 if st.session_state.adj_plan in ["治験・その他薬物療法", "その他"]:
                     st.session_state.adj_other_30 = st.text_input("治療の詳細*", value=st.session_state.adj_other_30)
@@ -316,7 +321,6 @@ with tab4:
         if d.status_alive == "生存":
             if d.adj_plan == "選択してください": h_errors.append("・今後の予定(術後補助療法等)")
             if d.adj_plan not in ["選択してください", "無治療（経過観察）"]:
-                # --- 修正点：エラー文言も「開始（予定）日」に統一、終了日のバリデーションを削除 ---
                 if not d.adj_start_30: h_errors.append("・治療の開始（予定）日")
 
         elif d.status_alive == "生存" and d.cd_grade == "Grade V": h_errors.append("・生存なのにCD Grade Vです")
