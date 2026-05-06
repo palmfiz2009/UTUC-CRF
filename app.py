@@ -312,6 +312,19 @@ with tab4:
         if d.op_performed is None: h_errors.append("・手術の実施有無")
         if d.op_performed == "実施しなかった" and d.no_op_reason == "選択してください": h_errors.append("・実施しなかった理由")
         
+        # --- 【追加】タイムライン（日付）の矛盾チェック ---
+        if d.op_performed == "実施した" and d.op_date:
+            if d.op_admission_date and d.op_admission_date > d.op_date: h_errors.append("・[日付エラー] 入院日が手術日より後になっています")
+            if d.op_discharge_date and d.op_discharge_date < d.op_date: h_errors.append("・[日付エラー] 退院日が手術日より前になっています")
+            if d.cd_date_30 and d.cd_date_30 < d.op_date: h_errors.append("・[日付エラー] 術後合併症発現日が手術日より前になっています")
+            if d.final_visit_date_30 and d.final_visit_date_30 < d.op_date: h_errors.append("・[日付エラー] 最終生存確認日が手術日より前になっています")
+            if d.death_date_30 and d.death_date_30 < d.op_date: h_errors.append("・[日付エラー] 死亡日が手術日より前になっています")
+            
+            # 補助療法開始日の矛盾チェック（純粋な術後補助療法のみ、術前継続は除外）
+            if d.adj_plan in ["ニボルマブ単剤（術後補助療法）", "GC療法（術後補助療法）", "GCarbo療法（術後補助療法）", "放射線治療"]:
+                if d.adj_start_30 and d.adj_start_30 < d.op_date: h_errors.append(f"・[日付エラー] {d.adj_plan}の開始（予定）日が手術日より前になっています")
+        # --------------------------------------------------
+
         if d.op_performed == "実施した":
             if d.cd_grade == "選択してください": h_errors.append("・Clavien-Dindo分類")
             if d.cd_grade not in ["選択してください", "Grade 0", "N/A"]:
@@ -329,7 +342,72 @@ with tab4:
         if h_errors:
             st.error("入力不備があります。修正してください：\n" + "\n".join(h_errors))
         else:
-            rep = f"【JUOG 周術期報告】\n施設: {d.facility_name}\nID: {d.patient_id}\n生存: {d.status_alive}\n主要採血: WBC:{f_num(d.wbc_reg)}, Hb:{f_num(d.hb_reg)}, Cre:{f_num(d.cre_reg)}"
+            # --- 【修正】メール本文を全項目フル出力に変更 ---
+            rep = f"""【JUOG 周術期報告】
+施設名: {d.facility_name}
+研究対象者識別コード: {d.patient_id}
+報告者メールアドレス: {d.reporter_email}
+
+--- 1. 術前EVP・身体所見 ---
+最終EVP投与日: {d.last_evp_date}
+術前EVP関連AE: {d.pre_ae_grade} (詳細: {d.ae_detail})
+身体所見の異常: {d.vital_abnormality} (詳細: {d.vital_detail})
+膀胱鏡所見: {d.cysto_find} (詳細: {d.bladder_tumor_tx})
+
+--- 2. 術前血液検査 ---
+WBC: {f_num(d.wbc_reg)} /μL, Hb: {f_num(d.hb_reg)} g/dL, PLT: {f_num(d.plt_reg)} x10^4/μL
+AST: {f_num(d.ast_reg)} U/L, ALT: {f_num(d.alt_reg)} U/L, LDH: {f_num(d.ldh_reg)} U/L
+Alb: {f_num(d.alb_reg)} g/dL, Cre: {f_num(d.cre_reg)} mg/dL, eGFR: {f_num(d.egfr_reg)}
+CRP: {f_num(d.crp_reg)} mg/dL
+白血球分画: Neutro {f_num(d.neutro_reg)}%, Lympho {f_num(d.lympho_reg)}%, Mono {f_num(d.mono_reg)}%, Eosino {f_num(d.eosino_reg)}%, Baso {f_num(d.baso_reg)}%
+
+--- 3. 手術実施状況 ---
+手術の実施: {d.op_performed}
+"""
+            if d.op_performed == "実施した":
+                rep += f"""入院日: {d.op_admission_date}
+手術実施日: {d.op_date}
+退院日: {d.op_discharge_date}
+術式: {d.op_type}
+アプローチ: {d.approach}
+予定手術完遂: {d.op_completed} (不能理由: {d.op_incomplete_detail})
+手術時間: {f_num(d.op_time)} 分
+出血量: {f_num(d.bleeding)} mL
+術中合併症(EAUiaiC): {d.eau_grade} (詳細: {d.eau_detail})
+リンパ節郭清: {d.ln_dissection} (範囲: {', '.join(d.ln_range) if d.ln_range else 'N/A'})
+
+--- 4. 術後病理診断 ---
+組織型: {d.p_histology} (詳細: {d.p_histology_other})
+亜型の有無: {d.p_subtype_presence} (種類: {', '.join(d.p_subtype_type) if d.p_subtype_type else 'N/A'})
+形態: {d.p_morphology}
+最大径: {f_num(d.p_size)} mm
+部位: {', '.join(d.p_location) if d.p_location else 'N/A'}
+ypT: {d.ypt}
+ypN: {d.ypn} (陽性部位: {', '.join(d.ypn_pos_sites) if d.ypn_pos_sites else 'N/A'})
+多発性: {d.p_multiplicity}
+LVI: {d.p_lvi}
+R0切除: {d.r0_status}
+TRG分類: {d.trg_grade}
+病理評価不能理由: {d.p_eval_failed_reason}
+"""
+            else:
+                rep += f"実施しなかった理由: {d.no_op_reason}\n"
+
+            rep += f"""
+--- 5. 術後30日目評価 ---
+術後合併症(CD分類): {d.cd_grade}
+合併症発現日: {d.cd_date_30}
+外科的合併症詳細: {d.cd_detail}
+
+生存状況 (30日時点): {d.status_alive}
+最終生存確認日: {d.final_visit_date_30}
+死亡日: {d.death_date_30}
+死因: {d.death_cause_30}
+
+今後の治療予定: {d.adj_plan}
+治療詳細(その他): {d.adj_other_30}
+開始(予定)日: {d.adj_start_30}
+"""
             if send_email(rep, d.patient_id, d.facility_name, d.reporter_email):
                 st.success(f"正常送信されました。{d.reporter_email} 宛に控えを送付しました。")
                 st.balloons()
