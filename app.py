@@ -305,108 +305,102 @@ with tab4:
     if st.button("🚀 事務局へ確定送信", type="primary", use_container_width=True):
         h_errors = []
         d = st.session_state
+        
+        # 基本チェック
         if d.facility_name == "選択してください": h_errors.append("・施設名")
         if not d.patient_id: h_errors.append("・識別コード")
         if not re.match(r"[^@]+@[^@]+\.[^@]+", d.reporter_email): h_errors.append("・有効なメールアドレス")
         if d.status_alive is None: h_errors.append("・生存状況")
         if d.op_performed is None: h_errors.append("・手術の実施有無")
-        if d.op_performed == "実施しなかった" and d.no_op_reason == "選択してください": h_errors.append("・実施しなかった理由")
         
-        # --- 【追加】タイムライン（日付）の矛盾チェック ---
-        if d.op_performed == "実施した" and d.op_date:
-            if d.op_admission_date and d.op_admission_date > d.op_date: h_errors.append("・[日付エラー] 入院日が手術日より後になっています")
-            if d.op_discharge_date and d.op_discharge_date < d.op_date: h_errors.append("・[日付エラー] 退院日が手術日より前になっています")
-            if d.cd_date_30 and d.cd_date_30 < d.op_date: h_errors.append("・[日付エラー] 術後合併症発現日が手術日より前になっています")
-            if d.final_visit_date_30 and d.final_visit_date_30 < d.op_date: h_errors.append("・[日付エラー] 最終生存確認日が手術日より前になっています")
-            if d.death_date_30 and d.death_date_30 < d.op_date: h_errors.append("・[日付エラー] 死亡日が手術日より前になっています")
-            
-            # 補助療法開始日の矛盾チェック（純粋な術後補助療法のみ、術前継続は除外）
-            if d.adj_plan in ["ニボルマブ単剤（術後補助療法）", "GC療法（術後補助療法）", "GCarbo療法（術後補助療法）", "放射線治療"]:
-                if d.adj_start_30 and d.adj_start_30 < d.op_date: h_errors.append(f"・[日付エラー] {d.adj_plan}の開始（予定）日が手術日より前になっています")
-        # --------------------------------------------------
+        if d.op_performed == "実施しなかった" and d.no_op_reason == "選択してください":
+            h_errors.append("・実施しなかった理由")
 
+        # --- Tab1 必須項目チェック（採血以外） ---
+        if d.pre_ae_grade == "選択してください": h_errors.append("・術前EVP関連AE")
+        if d.pre_ae_grade not in ["選択してください", "なし"] and not d.ae_detail: h_errors.append("・CTCAE詳細")
+        if d.vital_abnormality is None: h_errors.append("・身体所見の異常")
+        if d.vital_abnormality == "異常あり" and not d.vital_detail: h_errors.append("・身体所見の異常詳細")
+        if d.cysto_find is None: h_errors.append("・膀胱鏡所見")
+        if d.cysto_find == "腫瘍あり" and not d.bladder_tumor_tx: h_errors.append("・膀胱腫瘍の治療詳細")
+
+        # --- Tab2, 3 手術・病理 必須項目チェック ---
         if d.op_performed == "実施した":
-            if d.cd_grade == "選択してください": h_errors.append("・Clavien-Dindo分類")
-            if d.cd_grade not in ["選択してください", "Grade 0", "N/A"]:
-                if not d.cd_date_30: h_errors.append("・合併症の発現日")
-                if not d.cd_detail: h_errors.append("・外科的合併症の詳細")
-                
-        if d.status_alive == "生存":
-            if d.adj_plan == "選択してください": h_errors.append("・今後の予定(術後補助療法等)")
-            if d.adj_plan not in ["選択してください", "無治療（経過観察）"]:
-                if not d.adj_start_30: h_errors.append("・治療の開始（予定）日")
+            if not d.op_admission_date: h_errors.append("・入院日")
+            if d.op_type == "選択してください": h_errors.append("・術式")
+            if d.approach is None: h_errors.append("・アプローチ")
+            if d.op_completed is None: h_errors.append("・予定手術が完遂できたか")
+            if d.op_completed == "いいえ" and not d.op_incomplete_detail: h_errors.append("・完遂不能理由")
+            if d.op_time is None: h_errors.append("・手術時間")
+            if d.bleeding is None: h_errors.append("・出血量")
+            if d.eau_grade == "選択してください": h_errors.append("・術中合併症(EAUiaiC)")
+            if d.eau_grade not in ["選択してください", "Grade 0"] and not d.eau_detail: h_errors.append("・術中合併症詳細")
+            if d.ln_dissection is None: h_errors.append("・リンパ節郭清")
+            if d.ln_dissection == "実施した" and not d.ln_range: h_errors.append("・郭清範囲")
+            
+            if d.p_histology == "選択してください": h_errors.append("・病理：組織型")
+            if d.p_subtype_presence is None: h_errors.append("・病理：亜型の有無")
+            if d.p_morphology == "選択してください": h_errors.append("・病理：形態")
+            if d.p_size is None: h_errors.append("・病理：最大径")
+            if d.ypt == "選択してください": h_errors.append("・病理：ypT")
+            if d.ypn == "選択してください": h_errors.append("・病理：ypN")
 
-        elif d.status_alive == "生存" and d.cd_grade == "Grade V": h_errors.append("・生存なのにCD Grade Vです")
-        elif d.status_alive == "死亡" and d.cd_grade != "Grade V": h_errors.append("・死亡なのにCD Grade V以外です")
+            # タイムライン矛盾チェック
+            if d.op_date:
+                if d.op_admission_date and d.op_admission_date > d.op_date: h_errors.append("・[日付エラー] 入院日が手術日より後になっています")
+                if d.op_discharge_date and d.op_discharge_date < d.op_date: h_errors.append("・[日付エラー] 退院日が手術日より前になっています")
+                if d.cd_date_30 and d.cd_date_30 < d.op_date: h_errors.append("・[日付エラー] 術後合併症発現日が手術日より前になっています")
+                if d.final_visit_date_30 and d.final_visit_date_30 < d.op_date: h_errors.append("・[日付エラー] 最終生存確認日が手術日より前になっています")
+                if d.death_date_30 and d.death_date_30 < d.op_date: h_errors.append("・[日付エラー] 死亡日が手術日より前になっています")
+                if d.adj_plan in ["ニボルマブ単剤（術後補助療法）", "GC療法（術後補助療法）", "GCarbo療法（術後補助療法）", "放射線治療"]:
+                    if d.adj_start_30 and d.adj_start_30 < d.op_date: h_errors.append(f"・[日付エラー] {d.adj_plan}の開始（予定）日が手術日より前になっています")
+
+        # --- OSと合併症の論理チェック ---
+        if d.status_alive == "生存":
+            if d.cd_grade == "Grade V": h_errors.append("・生存なのにCD Grade Vです")
+            if d.adj_plan == "選択してください": h_errors.append("・今後の予定(術後補助療法等)")
+            if d.adj_plan not in ["選択してください", "無治療（経過観察）"] and not d.adj_start_30:
+                h_errors.append("・治療の開始（予定）日")
+        elif d.status_alive == "死亡":
+            if d.cd_grade != "Grade V": h_errors.append("・死亡なのにCD Grade V以外です")
+            if not d.death_date_30: h_errors.append("・死亡日")
+            if d.death_cause_30 == "選択してください": h_errors.append("・死因")
 
         if h_errors:
             st.error("入力不備があります。修正してください：\n" + "\n".join(h_errors))
         else:
-            # --- 【修正】メール本文を全項目フル出力に変更 ---
             rep = f"""【JUOG 周術期報告】
-施設名: {d.facility_name}
-研究対象者識別コード: {d.patient_id}
+施設名: {d.facility_name} / ID: {d.patient_id}
 報告者メールアドレス: {d.reporter_email}
 
---- 1. 術前EVP・身体所見 ---
-最終EVP投与日: {d.last_evp_date}
-術前EVP関連AE: {d.pre_ae_grade} (詳細: {d.ae_detail})
-身体所見の異常: {d.vital_abnormality} (詳細: {d.vital_detail})
-膀胱鏡所見: {d.cysto_find} (詳細: {d.bladder_tumor_tx})
+--- 1. 術前・登録時 ---
+最終EVP日: {d.last_evp_date}
+AE Grade: {d.pre_ae_grade} ({d.ae_detail})
+身体所見: {d.vital_abnormality} ({d.vital_detail})
+膀胱鏡: {d.cysto_find} ({d.bladder_tumor_tx})
+血液検査: WBC:{f_num(d.wbc_reg)}, Hb:{f_num(d.hb_reg)}, PLT:{f_num(d.plt_reg)}, AST:{f_num(d.ast_reg)}, ALT:{f_num(d.alt_reg)}, LDH:{f_num(d.ldh_reg)}, Alb:{f_num(d.alb_reg)}, Cre:{f_num(d.cre_reg)}, eGFR:{f_num(d.egfr_reg)}, CRP:{f_num(d.crp_reg)}
+分画: Neutro {f_num(d.neutro_reg)}%, Lympho {f_num(d.lympho_reg)}%, Mono {f_num(d.mono_reg)}%, Eosino {f_num(d.eosino_reg)}%, Baso {f_num(d.baso_reg)}%
 
---- 2. 術前血液検査 ---
-WBC: {f_num(d.wbc_reg)} /μL, Hb: {f_num(d.hb_reg)} g/dL, PLT: {f_num(d.plt_reg)} x10^4/μL
-AST: {f_num(d.ast_reg)} U/L, ALT: {f_num(d.alt_reg)} U/L, LDH: {f_num(d.ldh_reg)} U/L
-Alb: {f_num(d.alb_reg)} g/dL, Cre: {f_num(d.cre_reg)} mg/dL, eGFR: {f_num(d.egfr_reg)}
-CRP: {f_num(d.crp_reg)} mg/dL
-白血球分画: Neutro {f_num(d.neutro_reg)}%, Lympho {f_num(d.lympho_reg)}%, Mono {f_num(d.mono_reg)}%, Eosino {f_num(d.eosino_reg)}%, Baso {f_num(d.baso_reg)}%
+--- 2. 手術記録 ---
+手術実施: {d.op_performed}
+入院日: {d.op_admission_date} / 手術日: {d.op_date} / 退院日: {d.op_discharge_date}
+術式: {d.op_type} / アプローチ: {d.approach}
+完遂: {d.op_completed} ({d.op_incomplete_detail})
+記録: 手術時間 {f_num(d.op_time)}分 / 出血量 {f_num(d.bleeding)}mL / EAUiaiC Grade {d.eau_grade} ({d.eau_detail})
+郭清: {d.ln_dissection} (範囲: {', '.join(d.ln_range) if d.ln_range else 'なし'})
 
---- 3. 手術実施状況 ---
-手術の実施: {d.op_performed}
-"""
-            if d.op_performed == "実施した":
-                rep += f"""入院日: {d.op_admission_date}
-手術実施日: {d.op_date}
-退院日: {d.op_discharge_date}
-術式: {d.op_type}
-アプローチ: {d.approach}
-予定手術完遂: {d.op_completed} (不能理由: {d.op_incomplete_detail})
-手術時間: {f_num(d.op_time)} 分
-出血量: {f_num(d.bleeding)} mL
-術中合併症(EAUiaiC): {d.eau_grade} (詳細: {d.eau_detail})
-リンパ節郭清: {d.ln_dissection} (範囲: {', '.join(d.ln_range) if d.ln_range else 'N/A'})
+--- 3. 病理結果 ---
+組織型: {d.p_histology} ({d.p_histology_other}) / 亜型 {d.p_subtype_presence} ({', '.join(d.p_subtype_type) if d.p_subtype_type else 'なし'})
+形態: {d.p_morphology} / 最大径 {f_num(d.p_size)}mm / 部位 {', '.join(d.p_location) if d.p_location else 'なし'}
+Stage: ypT {d.ypt} / ypN {d.ypn} (陽性部位: {', '.join(d.ypn_pos_sites) if d.ypn_pos_sites else 'なし'})
+その他: 多発 {d.p_multiplicity} / LVI {d.p_lvi} / R0 {d.r0_status} / TRG {d.trg_grade}
+病理不能理由: {d.p_eval_failed_reason}
 
---- 4. 術後病理診断 ---
-組織型: {d.p_histology} (詳細: {d.p_histology_other})
-亜型の有無: {d.p_subtype_presence} (種類: {', '.join(d.p_subtype_type) if d.p_subtype_type else 'N/A'})
-形態: {d.p_morphology}
-最大径: {f_num(d.p_size)} mm
-部位: {', '.join(d.p_location) if d.p_location else 'N/A'}
-ypT: {d.ypt}
-ypN: {d.ypn} (陽性部位: {', '.join(d.ypn_pos_sites) if d.ypn_pos_sites else 'N/A'})
-多発性: {d.p_multiplicity}
-LVI: {d.p_lvi}
-R0切除: {d.r0_status}
-TRG分類: {d.trg_grade}
-病理評価不能理由: {d.p_eval_failed_reason}
-"""
-            else:
-                rep += f"実施しなかった理由: {d.no_op_reason}\n"
-
-            rep += f"""
---- 5. 術後30日目評価 ---
-術後合併症(CD分類): {d.cd_grade}
-合併症発現日: {d.cd_date_30}
-外科的合併症詳細: {d.cd_detail}
-
-生存状況 (30日時点): {d.status_alive}
-最終生存確認日: {d.final_visit_date_30}
-死亡日: {d.death_date_30}
-死因: {d.death_cause_30}
-
-今後の治療予定: {d.adj_plan}
-治療詳細(その他): {d.adj_other_30}
-開始(予定)日: {d.adj_start_30}
+--- 4. 30日目評価 ---
+生存状況: {d.status_alive}
+合併症(CD): {d.cd_grade} (発現日: {d.cd_date_30} / 詳細: {d.cd_detail})
+確認日: 最終確認 {d.final_visit_date_30} / 死亡日 {d.death_date_30} / 死因 {d.death_cause_30}
+補助療法: {d.adj_plan} ({d.adj_other_30}) / 開始日: {d.adj_start_30}
 """
             if send_email(rep, d.patient_id, d.facility_name, d.reporter_email):
                 st.success(f"正常送信されました。{d.reporter_email} 宛に控えを送付しました。")
